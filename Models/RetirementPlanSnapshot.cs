@@ -6,6 +6,8 @@ public sealed class RetirementPlanSnapshot
 
     public RetirementGoal Goal { get; set; } = new();
 
+    public AnnualInvestmentPlan AnnualPlan { get; set; } = new();
+
     public PortfolioAssumptions Assumptions { get; set; } = new();
 
     public decimal CurrentCashTwd { get; set; }
@@ -22,6 +24,15 @@ public sealed class RetirementGoal
     public DateTime TargetDate { get; set; }
 
     public decimal TargetMonthlyIncomeTwd { get; set; }
+}
+
+public sealed class AnnualInvestmentPlan
+{
+    public int Year { get; set; }
+
+    public decimal TargetInvestmentTwd { get; set; }
+
+    public DateTime Deadline { get; set; }
 }
 
 public sealed class PortfolioAssumptions

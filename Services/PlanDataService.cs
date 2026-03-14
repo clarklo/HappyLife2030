@@ -26,13 +26,21 @@ public sealed class PlanDataService(HttpClient httpClient)
         var targetAnnualIncomeTwd = targetMonthlyIncomeTwd * 12m;
         var targetCapitalTwd = targetAnnualIncomeTwd / snapshot.Assumptions.AssumedAnnualYieldRate;
 
-        var currentAssetTwd = snapshot.CurrentCashTwd + snapshot.Positions.Sum(position => ConvertToTwd(position.Quantity * position.PricePerShare, position.Currency, usdToTwdRate));
+        var currentInvestedTwd = snapshot.Positions.Sum(position => ConvertToTwd(position.Quantity * position.PricePerShare, position.Currency, usdToTwdRate));
+        var currentAssetTwd = snapshot.CurrentCashTwd + currentInvestedTwd;
         var currentAnnualDividendTwd = snapshot.Positions.Sum(position => ConvertToTwd(position.Quantity * position.AnnualDividendPerShare, position.Currency, usdToTwdRate));
 
         var monthsRemaining = Math.Max(0, ((snapshot.Goal.TargetDate.Year - snapshot.AsOfDate.Year) * 12) + snapshot.Goal.TargetDate.Month - snapshot.AsOfDate.Month);
+        var annualPlanMonthsRemaining = snapshot.AnnualPlan.Year == snapshot.AsOfDate.Year
+            ? Math.Max(1, snapshot.AnnualPlan.Deadline.Month - snapshot.AsOfDate.Month + 1)
+            : 0;
+        var annualInvestmentTargetTwd = snapshot.AnnualPlan.TargetInvestmentTwd;
+        var annualInvestmentGapTwd = Math.Max(0m, annualInvestmentTargetTwd - currentInvestedTwd);
+        var requiredMonthlyInvestmentTwd = annualPlanMonthsRemaining == 0 ? annualInvestmentGapTwd : annualInvestmentGapTwd / annualPlanMonthsRemaining;
+        var requiredMonthlyInvestmentUsd = usdToTwdRate == 0 ? 0 : requiredMonthlyInvestmentTwd / usdToTwdRate;
         var projectedPortfolioAtTargetTwd = CalculateFutureValue(
             currentAssetTwd,
-            snapshot.Assumptions.MonthlyContributionUsd * usdToTwdRate,
+            requiredMonthlyInvestmentTwd,
             snapshot.Assumptions.ExpectedAnnualReturnRate,
             monthsRemaining);
 
@@ -40,8 +48,8 @@ public sealed class PlanDataService(HttpClient httpClient)
         var capitalGapTwd = Math.Max(0m, targetCapitalTwd - projectedPortfolioAtTargetTwd);
         var monthlyIncomeGapTwd = Math.Max(0m, targetMonthlyIncomeTwd - projectedMonthlyIncomeAtTargetTwd);
         var requiredAdditionalMonthlySavingsTwd = monthsRemaining == 0 ? capitalGapTwd : capitalGapTwd / monthsRemaining;
-        var monthlyContributionUsd = snapshot.Assumptions.MonthlyContributionUsd;
-        var monthlyContributionTwd = monthlyContributionUsd * usdToTwdRate;
+        var monthlyContributionUsd = requiredMonthlyInvestmentUsd;
+        var monthlyContributionTwd = requiredMonthlyInvestmentTwd;
 
         var positions = snapshot.Positions
             .Select(position =>
@@ -91,7 +99,18 @@ public sealed class PlanDataService(HttpClient httpClient)
             TargetDate = snapshot.Goal.TargetDate,
             TargetDateText = snapshot.Goal.TargetDate.ToString("yyyy/MM/dd"),
             CurrentAssetTwd = currentAssetTwd,
+            CurrentInvestedTwd = currentInvestedTwd,
             CurrentAnnualDividendTwd = currentAnnualDividendTwd,
+            AnnualPlanYear = snapshot.AnnualPlan.Year,
+            AnnualPlanDeadlineText = snapshot.AnnualPlan.Deadline.ToString("yyyy/MM/dd"),
+            AnnualPlanMonthsRemaining = annualPlanMonthsRemaining,
+            AnnualInvestmentTargetTwd = annualInvestmentTargetTwd,
+            AnnualInvestmentGapTwd = annualInvestmentGapTwd,
+            RequiredMonthlyInvestmentTwd = requiredMonthlyInvestmentTwd,
+            RequiredMonthlyInvestmentUsd = requiredMonthlyInvestmentUsd,
+            AnnualPlanProgressText = annualInvestmentTargetTwd == 0 ? "0.0%" : $"{currentInvestedTwd / annualInvestmentTargetTwd:P1}",
+            AnnualPlanProgressCss = annualInvestmentTargetTwd == 0 ? "0%" : $"{Math.Min(100m, currentInvestedTwd / annualInvestmentTargetTwd * 100m):0.##}%",
+            AnnualPlanIsOnTrack = annualInvestmentGapTwd == 0,
             TargetMonthlyIncomeTwd = targetMonthlyIncomeTwd,
             TargetAnnualIncomeTwd = targetAnnualIncomeTwd,
             TargetCapitalTwd = targetCapitalTwd,

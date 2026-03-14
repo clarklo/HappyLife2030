@@ -12,6 +12,8 @@ public sealed class RetirementDashboardViewModel
 
     public decimal CurrentAssetTwd { get; init; }
 
+    public decimal CurrentInvestedTwd { get; init; }
+
     public decimal CurrentAnnualDividendTwd { get; init; }
 
     public decimal TargetMonthlyIncomeTwd { get; init; }
@@ -27,6 +29,26 @@ public sealed class RetirementDashboardViewModel
     public decimal MonthlyContributionTwd { get; init; }
 
     public int MonthsRemaining { get; init; }
+
+    public int AnnualPlanMonthsRemaining { get; init; }
+
+    public int AnnualPlanYear { get; init; }
+
+    public string AnnualPlanDeadlineText { get; init; } = string.Empty;
+
+    public decimal AnnualInvestmentTargetTwd { get; init; }
+
+    public decimal AnnualInvestmentGapTwd { get; init; }
+
+    public decimal RequiredMonthlyInvestmentTwd { get; init; }
+
+    public decimal RequiredMonthlyInvestmentUsd { get; init; }
+
+    public string AnnualPlanProgressText { get; init; } = string.Empty;
+
+    public string AnnualPlanProgressCss { get; init; } = string.Empty;
+
+    public bool AnnualPlanIsOnTrack { get; init; }
 
     public decimal ProjectedPortfolioAtTargetTwd { get; init; }
 

@@ -23,7 +23,9 @@ else if (_dashboard is not null)
             <p class="eyebrow">2030 退休戰情看板</p>
             <h1>把每月 15 萬台幣的現金流目標，拆成每天都看得懂的進度。</h1>
             <p class="hero-summary">
-                截至 @_dashboard.AsOfDateText，目前投資組合總資產為
+                截至 @_dashboard.AsOfDateText，目前已投入本金為
+                <strong>@FormatCurrency(_dashboard.CurrentInvestedTwd, "TWD")</strong>，
+                目前投資組合總資產為
                 <strong>@FormatCurrency(_dashboard.CurrentAssetTwd, "TWD")</strong>。
                 以假設殖利率 @_dashboard.AssumedAnnualYieldText 推估，
                 目前可對應的年化現金流約為
@@ -59,9 +61,9 @@ else if (_dashboard is not null)
             <p>目標日期：@_dashboard.TargetDateText</p>
         </article>
         <article class="metric-card">
-            <span class="metric-label">每月加碼預算</span>
-            <strong>@FormatCurrency(_dashboard.MonthlyContributionUsd, "USD")</strong>
-            <p>目前設定為先建觀察清單，約 @FormatCurrency(_dashboard.MonthlyContributionTwd, "TWD") / 月</p>
+            <span class="metric-label">@_dashboard.AnnualPlanYear 年每月應投入</span>
+            <strong>@FormatCurrency(_dashboard.RequiredMonthlyInvestmentTwd, "TWD")</strong>
+            <p>約 @FormatCurrency(_dashboard.RequiredMonthlyInvestmentUsd, "USD") / 月，目標至 @_dashboard.AnnualPlanDeadlineText</p>
         </article>
         <article class="metric-card">
             <span class="metric-label">2030 預估總資產</span>
@@ -84,41 +86,64 @@ else if (_dashboard is not null)
         <article class="panel">
             <div class="panel-heading">
                 <div>
-                    <p class="eyebrow">重點判讀</p>
-                    <h2>計劃訊號</h2>
+                    <p class="eyebrow">年度投入計畫</p>
+                    <h2>@_dashboard.AnnualPlanYear 年 2,000 萬目標</h2>
                 </div>
             </div>
             <ul class="signal-list">
-                <li>照目前節奏，2030 年預估可達成 <strong>@_dashboard.ProjectedProgressPercentText</strong> 的資產目標。</li>
-                <li>2030 年預估每月現金流約為 <strong>@FormatCurrency(_dashboard.ProjectedMonthlyIncomeAtTargetTwd, "TWD")</strong>。</li>
-                <li>若要在同一日期內補足差距，平均每月仍需增加 <strong>@FormatCurrency(_dashboard.RequiredAdditionalMonthlySavingsTwd, "TWD")</strong> 的本金。</li>
-                <li>目前投組對應現金收益率約為 <strong>@_dashboard.CurrentYieldOnCostText</strong>。</li>
+                <li>年度目標投入金額為 <strong>@FormatCurrency(_dashboard.AnnualInvestmentTargetTwd, "TWD")</strong>，目前已投入 <strong>@FormatCurrency(_dashboard.CurrentInvestedTwd, "TWD")</strong>。</li>
+                <li>目前完成度為 <strong>@_dashboard.AnnualPlanProgressText</strong>，距離年底尚有 <strong>@FormatCurrency(_dashboard.AnnualInvestmentGapTwd, "TWD")</strong> 要投入。</li>
+                <li>依照今天 @(_dashboard.AnnualPlanMonthsRemaining) 個月剩餘期間估算，平均每月需投入 <strong>@FormatCurrency(_dashboard.RequiredMonthlyInvestmentTwd, "TWD")</strong>。</li>
+                <li>@(_dashboard.RequiredMonthlyInvestmentTwd <= 3000000m ? "以高資產配置者來看，這個節奏可執行，但要維持穩定資金安排。" : "這個節奏偏高，建議再確認資金調度，避免年底前壓力過大。")</li>
             </ul>
+            <div class="progress-track">
+                <div class="progress-value" style="width:@_dashboard.AnnualPlanProgressCss"></div>
+            </div>
         </article>
 
         <article class="panel">
             <div class="panel-heading">
                 <div>
-                    <p class="eyebrow">核心籃子</p>
-                    <h2>觀察標的配置</h2>
+                    <p class="eyebrow">重點判讀</p>
+                    <h2>計劃訊號</h2>
                 </div>
             </div>
-            <div class="allocation-list">
-                @foreach (var position in _dashboard.Positions)
-                {
-                    <div class="allocation-row">
-                        <div>
-                            <strong>@position.Ticker</strong>
-                            <span>@position.MarketValueText</span>
-                        </div>
-                        <div class="allocation-bar">
-                            <div style="width:@position.AllocationShareCss"></div>
-                        </div>
-                        <span class="allocation-weight">@position.AllocationShareText</span>
-                    </div>
-                }
-            </div>
+            <ul class="signal-list">
+                <li>若今年能完成 2,000 萬投入並沿用同樣報酬假設，2030 年預估可達成 <strong>@_dashboard.ProjectedProgressPercentText</strong> 的資產目標。</li>
+                <li>2030 年預估每月現金流約為 <strong>@FormatCurrency(_dashboard.ProjectedMonthlyIncomeAtTargetTwd, "TWD")</strong>。</li>
+                <li>若要在同一日期內補足差距，平均每月仍需增加 <strong>@FormatCurrency(_dashboard.RequiredAdditionalMonthlySavingsTwd, "TWD")</strong> 的本金。</li>
+                <li>目前投組對應現金收益率約為 <strong>@_dashboard.CurrentYieldOnCostText</strong>。</li>
+            </ul>
         </article>
+    </section>
+
+    <section class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">定期定額建議</p>
+                <h2>今年內投入 2,000 萬台幣的分配節奏</h2>
+            </div>
+        </div>
+        <div class="allocation-list">
+            @foreach (var position in _dashboard.Positions)
+            {
+                <div class="allocation-row">
+                    <div>
+                        <strong>@position.Ticker</strong>
+                        <span>@position.MarketValueText</span>
+                    </div>
+                    <div class="allocation-bar">
+                        <div style="width:@position.AllocationShareCss"></div>
+                    </div>
+                    <span class="allocation-weight">@position.AllocationShareText</span>
+                </div>
+            }
+        </div>
+        <p class="panel-note">
+            建議以目前關注的四檔平均配置。若要達成今年投入 2,000 萬台幣，
+            每月可先抓 <strong>@FormatCurrency(_dashboard.RequiredMonthlyInvestmentTwd / 4m, "TWD")</strong> 到每一檔。
+            等你實際下單後，我再依真實成交結果調整比重。
+        </p>
     </section>
 
     <section class="panel">
