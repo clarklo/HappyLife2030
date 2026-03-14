@@ -1,18 +1,18 @@
 @page "/"
 @inject retirement_dashboard.Services.PlanDataService PlanDataService
 
-<PageTitle>2030 Retirement Board</PageTitle>
+<PageTitle>2030 退休戰情看板</PageTitle>
 
 @if (_isLoading)
 {
     <section class="loading-state">
-        <p>Loading retirement data...</p>
+        <p>正在載入退休計劃資料...</p>
     </section>
 }
 else if (!string.IsNullOrWhiteSpace(_errorMessage))
 {
     <section class="error-state">
-        <h1>Data load failed</h1>
+        <h1>資料載入失敗</h1>
         <p>@_errorMessage</p>
     </section>
 }
@@ -20,33 +20,33 @@ else if (_dashboard is not null)
 {
     <section class="hero-panel">
         <div class="hero-copy">
-            <p class="eyebrow">2030 Retirement Ops Board</p>
-            <h1>Turn a NT$150,000 monthly income goal into a daily visible plan.</h1>
+            <p class="eyebrow">2030 退休戰情看板</p>
+            <h1>把每月 15 萬台幣的現金流目標，拆成每天都看得懂的進度。</h1>
             <p class="hero-summary">
-                As of @_dashboard.AsOfDateText, current portfolio value is
-                <strong>@FormatCurrency(_dashboard.CurrentAssetTwd, "TWD")</strong>.
-                With an assumed yield of @_dashboard.AssumedAnnualYieldText,
-                the current annual income equivalent is
-                <strong>@FormatCurrency(_dashboard.CurrentAnnualDividendTwd, "TWD")</strong>.
+                截至 @_dashboard.AsOfDateText，目前投資組合總資產為
+                <strong>@FormatCurrency(_dashboard.CurrentAssetTwd, "TWD")</strong>。
+                以假設殖利率 @_dashboard.AssumedAnnualYieldText 推估，
+                目前可對應的年化現金流約為
+                <strong>@FormatCurrency(_dashboard.CurrentAnnualDividendTwd, "TWD")</strong>。
             </p>
         </div>
         <div class="hero-focus">
             <div class="focus-card">
-                <span class="label">Target monthly income</span>
+                <span class="label">目標月現金流</span>
                 <strong>@FormatCurrency(_dashboard.TargetMonthlyIncomeTwd, "TWD")</strong>
-                <span class="muted">Annual target @FormatCurrency(_dashboard.TargetAnnualIncomeTwd, "TWD")</span>
+                <span class="muted">年目標 @FormatCurrency(_dashboard.TargetAnnualIncomeTwd, "TWD")</span>
             </div>
             <div class="focus-card accent">
-                <span class="label">Required capital</span>
+                <span class="label">推算所需資產</span>
                 <strong>@FormatCurrency(_dashboard.TargetCapitalTwd, "TWD")</strong>
-                <span class="muted">Back-calculated with @_dashboard.AssumedAnnualYieldText yield</span>
+                <span class="muted">以 @_dashboard.AssumedAnnualYieldText 殖利率反推</span>
             </div>
         </div>
     </section>
 
     <section class="metrics-grid">
         <article class="metric-card">
-            <span class="metric-label">Progress now</span>
+            <span class="metric-label">目前進度</span>
             <strong>@_dashboard.ProgressPercentText</strong>
             <p>@FormatCurrency(_dashboard.CurrentAssetTwd, "TWD") / @FormatCurrency(_dashboard.TargetCapitalTwd, "TWD")</p>
             <div class="progress-track">
@@ -54,29 +54,29 @@ else if (_dashboard is not null)
             </div>
         </article>
         <article class="metric-card">
-            <span class="metric-label">Time remaining</span>
-            <strong>@_dashboard.MonthsRemaining months</strong>
-            <p>Target date: @_dashboard.TargetDateText</p>
+            <span class="metric-label">距離目標時間</span>
+            <strong>@_dashboard.MonthsRemaining 個月</strong>
+            <p>目標日期：@_dashboard.TargetDateText</p>
         </article>
         <article class="metric-card">
-            <span class="metric-label">Monthly add-on budget</span>
+            <span class="metric-label">每月加碼預算</span>
             <strong>@FormatCurrency(_dashboard.MonthlyContributionUsd, "USD")</strong>
-            <p>Current setup is one-time deployment first, @FormatCurrency(_dashboard.MonthlyContributionTwd, "TWD") per month</p>
+            <p>目前設定為先建觀察清單，約 @FormatCurrency(_dashboard.MonthlyContributionTwd, "TWD") / 月</p>
         </article>
         <article class="metric-card">
-            <span class="metric-label">Projected 2030 assets</span>
+            <span class="metric-label">2030 預估總資產</span>
             <strong>@FormatCurrency(_dashboard.ProjectedPortfolioAtTargetTwd, "TWD")</strong>
-            <p>Assuming @_dashboard.ExpectedAnnualReturnText annual return</p>
+            <p>假設年化報酬 @_dashboard.ExpectedAnnualReturnText</p>
         </article>
         <article class="metric-card">
-            <span class="metric-label">Projected 2030 monthly income</span>
+            <span class="metric-label">2030 預估月現金流</span>
             <strong>@FormatCurrency(_dashboard.ProjectedMonthlyIncomeAtTargetTwd, "TWD")</strong>
-            <p>Gap to target: @FormatCurrency(_dashboard.MonthlyIncomeGapTwd, "TWD")</p>
+            <p>距離目標差額：@FormatCurrency(_dashboard.MonthlyIncomeGapTwd, "TWD")</p>
         </article>
         <article class="metric-card alert">
-            <span class="metric-label">Capital gap</span>
+            <span class="metric-label">資產缺口</span>
             <strong>@FormatCurrency(_dashboard.CapitalGapTwd, "TWD")</strong>
-            <p>If nothing changes, this is the remaining shortfall by 2030</p>
+            <p>若規劃不變，2030 年仍需補足的差距</p>
         </article>
     </section>
 
@@ -84,23 +84,23 @@ else if (_dashboard is not null)
         <article class="panel">
             <div class="panel-heading">
                 <div>
-                    <p class="eyebrow">Key read</p>
-                    <h2>Plan signal</h2>
+                    <p class="eyebrow">重點判讀</p>
+                    <h2>計劃訊號</h2>
                 </div>
             </div>
             <ul class="signal-list">
-                <li>At the current pace, projected target completion is <strong>@_dashboard.ProjectedProgressPercentText</strong>.</li>
-                <li>Projected monthly income in 2030 is <strong>@FormatCurrency(_dashboard.ProjectedMonthlyIncomeAtTargetTwd, "TWD")</strong>.</li>
-                <li>To fully close the gap by the same date, additional monthly capital needed is <strong>@FormatCurrency(_dashboard.RequiredAdditionalMonthlySavingsTwd, "TWD")</strong>.</li>
-                <li>Current cash yield on portfolio value is <strong>@_dashboard.CurrentYieldOnCostText</strong>.</li>
+                <li>照目前節奏，2030 年預估可達成 <strong>@_dashboard.ProjectedProgressPercentText</strong> 的資產目標。</li>
+                <li>2030 年預估每月現金流約為 <strong>@FormatCurrency(_dashboard.ProjectedMonthlyIncomeAtTargetTwd, "TWD")</strong>。</li>
+                <li>若要在同一日期內補足差距，平均每月仍需增加 <strong>@FormatCurrency(_dashboard.RequiredAdditionalMonthlySavingsTwd, "TWD")</strong> 的本金。</li>
+                <li>目前投組對應現金收益率約為 <strong>@_dashboard.CurrentYieldOnCostText</strong>。</li>
             </ul>
         </article>
 
         <article class="panel">
             <div class="panel-heading">
                 <div>
-                    <p class="eyebrow">Core basket</p>
-                    <h2>NT$40M starting allocation</h2>
+                    <p class="eyebrow">核心籃子</p>
+                    <h2>觀察標的配置</h2>
                 </div>
             </div>
             <div class="allocation-list">
@@ -124,21 +124,21 @@ else if (_dashboard is not null)
     <section class="panel">
         <div class="panel-heading">
             <div>
-                <p class="eyebrow">Position snapshot</p>
-                <h2>Current holdings</h2>
+                <p class="eyebrow">持股快照</p>
+                <h2>目前部位</h2>
             </div>
-            <span class="muted">Updated @_dashboard.AsOfDateText</span>
+            <span class="muted">更新日 @_dashboard.AsOfDateText</span>
         </div>
         <div class="table-shell">
             <table>
                 <thead>
                     <tr>
-                        <th>Ticker</th>
-                        <th>Shares</th>
-                        <th>Price</th>
-                        <th>Market value</th>
-                        <th>Annual income</th>
-                        <th>Weight</th>
+                        <th>代號</th>
+                        <th>股數</th>
+                        <th>價格</th>
+                        <th>市值</th>
+                        <th>年化現金流</th>
+                        <th>比重</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -165,8 +165,8 @@ else if (_dashboard is not null)
         <article class="panel">
             <div class="panel-heading">
                 <div>
-                    <p class="eyebrow">Timeline</p>
-                    <h2>Growth path</h2>
+                    <p class="eyebrow">時間軸</p>
+                    <h2>成長軌跡</h2>
                 </div>
             </div>
             <div class="timeline">
@@ -189,13 +189,13 @@ else if (_dashboard is not null)
         <article class="panel">
             <div class="panel-heading">
                 <div>
-                    <p class="eyebrow">Daily update flow</p>
-                    <h2>Two-step maintenance</h2>
+                    <p class="eyebrow">每日更新流程</p>
+                    <h2>兩步維護</h2>
                 </div>
             </div>
             <ol class="step-list">
-                <li>Send me a broker screenshot and I will translate it into updated shares, prices and total assets.</li>
-                <li>I update <code>wwwroot/data/retirement-plan.json</code> and redeploy the board.</li>
+                <li>你把券商截圖傳給我，我幫你整理成最新股數、價格與總資產。</li>
+                <li>我更新 <code>wwwroot/data/retirement-plan.json</code> 後重新部署。</li>
             </ol>
             <p class="panel-note">@_dashboard.Notes</p>
         </article>

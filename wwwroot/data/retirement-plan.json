@@ -12,11 +12,11 @@
     "reinvestDividends": true
   },
   "currentCashTwd": 0,
-  "notes": "Watchlist only. No positions have been purchased yet. Screenshot received on 2026-03-15 for CSNDX, TSM, VWRA, CSPX. Once orders are filled, update quantity and actual cost/price fields from broker screenshots.",
+  "notes": "目前僅為觀察清單，尚未開始買入。已收到 2026-03-15 的 CSNDX、TSM、VWRA、CSPX 截圖。等實際成交後，再依券商截圖更新股數與真實成交價格。",
   "positions": [
     {
       "ticker": "CSNDX",
-      "name": "CSNDX watchlist",
+      "name": "CSNDX 觀察清單",
       "currency": "USD",
       "quantity": 0,
       "pricePerShare": 1402.00,
@@ -55,7 +55,7 @@
     {
       "date": "2026-03-15T00:00:00",
       "assetValueTwd": 0,
-      "note": "Dashboard created. No purchases yet."
+      "note": "戰情看板建立完成，尚未開始買入。"
     }
   ]
 }

@@ -13,7 +13,7 @@ public sealed class PlanDataService(HttpClient httpClient)
 
         if (snapshot is null)
         {
-            throw new InvalidOperationException("Retirement plan data file was not found.");
+            throw new InvalidOperationException("找不到退休計劃資料檔。");
         }
 
         return BuildViewModel(snapshot);
@@ -74,7 +74,7 @@ public sealed class PlanDataService(HttpClient httpClient)
                 {
                     DateText = point.Date.ToString("yyyy/MM/dd"),
                     AssetValueText = $"NT${point.AssetValueTwd:N0}",
-                    ProgressText = $"{progress:P1} to target",
+                    ProgressText = $"{progress:P1} 達成率",
                     Note = point.Note
                 };
             })
