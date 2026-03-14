@@ -25,7 +25,7 @@
     },
     {
       "ticker": "TSM",
-      "name": "Taiwan Semiconductor ADR",
+      "name": "台積電 ADR",
       "currency": "USD",
       "quantity": 0,
       "pricePerShare": 337.80,
@@ -34,7 +34,7 @@
     },
     {
       "ticker": "VWRA",
-      "name": "Vanguard FTSE All-World UCITS ETF",
+      "name": "Vanguard 全球股票 ETF",
       "currency": "USD",
       "quantity": 0,
       "pricePerShare": 167.82,
@@ -43,7 +43,7 @@
     },
     {
       "ticker": "CSPX",
-      "name": "iShares Core S&P 500 UCITS ETF",
+      "name": "iShares 標普 500 ETF",
       "currency": "USD",
       "quantity": 0,
       "pricePerShare": 714.90,
