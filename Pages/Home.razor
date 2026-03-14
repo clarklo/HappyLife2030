@@ -25,6 +25,8 @@ else if (_dashboard is not null)
             <p class="hero-summary">
                 截至 @_dashboard.AsOfDateText，目前已投入本金為
                 <strong>@FormatCurrency(_dashboard.CurrentInvestedTwd, "TWD")</strong>，
+                另有定存
+                <strong>@FormatCurrency(_dashboard.FixedDepositPrincipalTwd, "TWD")</strong>，
                 目前投資組合總資產為
                 <strong>@FormatCurrency(_dashboard.CurrentAssetTwd, "TWD")</strong>。
                 以假設殖利率 @_dashboard.AssumedAnnualYieldText 推估，
@@ -64,6 +66,11 @@ else if (_dashboard is not null)
             <span class="metric-label">@_dashboard.AnnualPlanYear 年每月應投入</span>
             <strong>@FormatCurrency(_dashboard.RequiredMonthlyInvestmentTwd, "TWD")</strong>
             <p>約 @FormatCurrency(_dashboard.RequiredMonthlyInvestmentUsd, "USD") / 月，目標至 @_dashboard.AnnualPlanDeadlineText</p>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label">定存本金</span>
+            <strong>@FormatCurrency(_dashboard.FixedDepositPrincipalTwd, "TWD")</strong>
+            <p>年利率 @_dashboard.FixedDepositRateText，年息約 @FormatCurrency(_dashboard.FixedDepositAnnualInterestTwd, "TWD")</p>
         </article>
         <article class="metric-card">
             <span class="metric-label">2030 預估總資產</span>
@@ -111,6 +118,7 @@ else if (_dashboard is not null)
             <ul class="signal-list">
                 <li>若今年能完成 2,000 萬投入並沿用同樣報酬假設，2030 年預估可達成 <strong>@_dashboard.ProjectedProgressPercentText</strong> 的資產目標。</li>
                 <li>2030 年預估每月現金流約為 <strong>@FormatCurrency(_dashboard.ProjectedMonthlyIncomeAtTargetTwd, "TWD")</strong>。</li>
+                <li>其中定存部位若持續以 @_dashboard.FixedDepositRateText 複利滾存，2030 年約可成長到 <strong>@FormatCurrency(_dashboard.ProjectedFixedDepositAtTargetTwd, "TWD")</strong>。</li>
                 <li>若要在同一日期內補足差距，平均每月仍需增加 <strong>@FormatCurrency(_dashboard.RequiredAdditionalMonthlySavingsTwd, "TWD")</strong> 的本金。</li>
                 <li>目前投組對應現金收益率約為 <strong>@_dashboard.CurrentYieldOnCostText</strong>。</li>
             </ul>

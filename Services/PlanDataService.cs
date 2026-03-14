@@ -25,10 +25,14 @@ public sealed class PlanDataService(HttpClient httpClient)
         var targetMonthlyIncomeTwd = snapshot.Goal.TargetMonthlyIncomeTwd;
         var targetAnnualIncomeTwd = targetMonthlyIncomeTwd * 12m;
         var targetCapitalTwd = targetAnnualIncomeTwd / snapshot.Assumptions.AssumedAnnualYieldRate;
+        var fixedDepositPrincipalTwd = snapshot.FixedDeposit.PrincipalTwd;
+        var fixedDepositAnnualInterestTwd = fixedDepositPrincipalTwd * snapshot.FixedDeposit.AnnualInterestRate;
 
         var currentInvestedTwd = snapshot.Positions.Sum(position => ConvertToTwd(position.Quantity * position.PricePerShare, position.Currency, usdToTwdRate));
-        var currentAssetTwd = snapshot.CurrentCashTwd + currentInvestedTwd;
-        var currentAnnualDividendTwd = snapshot.Positions.Sum(position => ConvertToTwd(position.Quantity * position.AnnualDividendPerShare, position.Currency, usdToTwdRate));
+        var currentAssetTwd = snapshot.CurrentCashTwd + currentInvestedTwd + fixedDepositPrincipalTwd;
+        var currentAnnualDividendTwd =
+            snapshot.Positions.Sum(position => ConvertToTwd(position.Quantity * position.AnnualDividendPerShare, position.Currency, usdToTwdRate)) +
+            fixedDepositAnnualInterestTwd;
 
         var monthsRemaining = Math.Max(0, ((snapshot.Goal.TargetDate.Year - snapshot.AsOfDate.Year) * 12) + snapshot.Goal.TargetDate.Month - snapshot.AsOfDate.Month);
         var annualPlanMonthsRemaining = snapshot.AnnualPlan.Year == snapshot.AsOfDate.Year
@@ -38,11 +42,17 @@ public sealed class PlanDataService(HttpClient httpClient)
         var annualInvestmentGapTwd = Math.Max(0m, annualInvestmentTargetTwd - currentInvestedTwd);
         var requiredMonthlyInvestmentTwd = annualPlanMonthsRemaining == 0 ? annualInvestmentGapTwd : annualInvestmentGapTwd / annualPlanMonthsRemaining;
         var requiredMonthlyInvestmentUsd = usdToTwdRate == 0 ? 0 : requiredMonthlyInvestmentTwd / usdToTwdRate;
-        var projectedPortfolioAtTargetTwd = CalculateFutureValue(
-            currentAssetTwd,
+        var projectedInvestedAssetsAtTargetTwd = CalculateFutureValue(
+            currentInvestedTwd + snapshot.CurrentCashTwd,
             requiredMonthlyInvestmentTwd,
             snapshot.Assumptions.ExpectedAnnualReturnRate,
             monthsRemaining);
+        var projectedFixedDepositAtTargetTwd = CalculateFutureValue(
+            fixedDepositPrincipalTwd,
+            0m,
+            snapshot.FixedDeposit.AnnualInterestRate,
+            monthsRemaining);
+        var projectedPortfolioAtTargetTwd = projectedInvestedAssetsAtTargetTwd + projectedFixedDepositAtTargetTwd;
 
         var projectedMonthlyIncomeAtTargetTwd = projectedPortfolioAtTargetTwd * snapshot.Assumptions.AssumedAnnualYieldRate / 12m;
         var capitalGapTwd = Math.Max(0m, targetCapitalTwd - projectedPortfolioAtTargetTwd);
@@ -100,6 +110,9 @@ public sealed class PlanDataService(HttpClient httpClient)
             TargetDateText = snapshot.Goal.TargetDate.ToString("yyyy/MM/dd"),
             CurrentAssetTwd = currentAssetTwd,
             CurrentInvestedTwd = currentInvestedTwd,
+            FixedDepositPrincipalTwd = fixedDepositPrincipalTwd,
+            FixedDepositAnnualInterestTwd = fixedDepositAnnualInterestTwd,
+            ProjectedFixedDepositAtTargetTwd = projectedFixedDepositAtTargetTwd,
             CurrentAnnualDividendTwd = currentAnnualDividendTwd,
             AnnualPlanYear = snapshot.AnnualPlan.Year,
             AnnualPlanDeadlineText = snapshot.AnnualPlan.Deadline.ToString("yyyy/MM/dd"),
@@ -124,6 +137,7 @@ public sealed class PlanDataService(HttpClient httpClient)
             RequiredAdditionalMonthlySavingsTwd = requiredAdditionalMonthlySavingsTwd,
             AssumedAnnualYieldText = $"{snapshot.Assumptions.AssumedAnnualYieldRate:P1}",
             ExpectedAnnualReturnText = $"{snapshot.Assumptions.ExpectedAnnualReturnRate:P1}",
+            FixedDepositRateText = $"{snapshot.FixedDeposit.AnnualInterestRate:P1}",
             ProgressPercentText = $"{progressPercent:P1}",
             ProgressPercentCss = $"{Math.Min(100m, progressPercent * 100m):0.##}%",
             ProjectedProgressPercentText = $"{projectedProgressPercent:P1}",

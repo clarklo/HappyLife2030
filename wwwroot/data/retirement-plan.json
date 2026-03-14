@@ -9,6 +9,11 @@
     "targetInvestmentTwd": 20000000,
     "deadline": "2026-12-31T00:00:00"
   },
+  "fixedDeposit": {
+    "principalTwd": 20000000,
+    "annualInterestRate": 0.017,
+    "reinvestInterest": true
+  },
   "assumptions": {
     "assumedAnnualYieldRate": 0.04,
     "expectedAnnualReturnRate": 0.08,
@@ -17,7 +22,7 @@
     "reinvestDividends": true
   },
   "currentCashTwd": 0,
-  "notes": "年度目標改為 2026 年底前累積投入 2,000 萬台幣。依 2026-03-15 截圖，TSM ADR 已持有 143.3263 股；CSNDX、VWRA、CSPX 目前先視為觀察清單。後續再依券商截圖更新其餘實際成交股數與價格。",
+  "notes": "年度目標改為 2026 年底前累積投入 2,000 萬台幣，另有 2,000 萬台幣定存以年利率 1.7% 滾存。依 2026-03-15 截圖，TSM ADR 已持有 143.3263 股；CSNDX、VWRA、CSPX 目前先視為觀察清單。後續再依券商截圖更新其餘實際成交股數與價格。",
   "positions": [
     {
       "ticker": "CSNDX",

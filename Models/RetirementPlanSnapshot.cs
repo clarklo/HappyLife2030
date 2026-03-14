@@ -10,6 +10,8 @@ public sealed class RetirementPlanSnapshot
 
     public PortfolioAssumptions Assumptions { get; set; } = new();
 
+    public FixedDepositPlan FixedDeposit { get; set; } = new();
+
     public decimal CurrentCashTwd { get; set; }
 
     public string Notes { get; set; } = string.Empty;
@@ -46,6 +48,15 @@ public sealed class PortfolioAssumptions
     public decimal MonthlyContributionUsd { get; set; }
 
     public bool ReinvestDividends { get; set; }
+}
+
+public sealed class FixedDepositPlan
+{
+    public decimal PrincipalTwd { get; set; }
+
+    public decimal AnnualInterestRate { get; set; }
+
+    public bool ReinvestInterest { get; set; }
 }
 
 public sealed class InvestmentPosition

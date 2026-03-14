@@ -14,6 +14,12 @@ public sealed class RetirementDashboardViewModel
 
     public decimal CurrentInvestedTwd { get; init; }
 
+    public decimal FixedDepositPrincipalTwd { get; init; }
+
+    public decimal FixedDepositAnnualInterestTwd { get; init; }
+
+    public decimal ProjectedFixedDepositAtTargetTwd { get; init; }
+
     public decimal CurrentAnnualDividendTwd { get; init; }
 
     public decimal TargetMonthlyIncomeTwd { get; init; }
@@ -61,6 +67,8 @@ public sealed class RetirementDashboardViewModel
     public string AssumedAnnualYieldText { get; init; } = string.Empty;
 
     public string ExpectedAnnualReturnText { get; init; } = string.Empty;
+
+    public string FixedDepositRateText { get; init; } = string.Empty;
 
     public string ProgressPercentText { get; init; } = string.Empty;
 
