@@ -1,0 +1,15 @@
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Page not found</PageTitle>
+        <LayoutView Layout="@typeof(Layout.MainLayout)">
+            <section class="error-state">
+                <h1>Page not found</h1>
+                <p>Please verify the deployment path and try again.</p>
+            </section>
+        </LayoutView>
+    </NotFound>
+</Router>

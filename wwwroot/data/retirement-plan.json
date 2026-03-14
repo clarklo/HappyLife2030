@@ -1,0 +1,61 @@
+{
+  "asOfDate": "2026-03-15T00:00:00",
+  "goal": {
+    "targetDate": "2030-12-31T00:00:00",
+    "targetMonthlyIncomeTwd": 150000
+  },
+  "assumptions": {
+    "assumedAnnualYieldRate": 0.04,
+    "expectedAnnualReturnRate": 0.08,
+    "usdToTwdRate": 32,
+    "monthlyContributionUsd": 0,
+    "reinvestDividends": true
+  },
+  "currentCashTwd": 0,
+  "notes": "目前先依你的更正，假設 2026/03/15 一次建倉總價值 NT$40,000,000，平均分配到 CSNDX、TSM、VWRA、CSPX。因為你還沒提供實際成交價與股數，下面先用估算價格推回股數，之後你把截圖傳給我，我會改成真實持倉。VWRA 與 CSPX 屬於偏累積型配置，所以看板主要追蹤的是資產底座是否足以在未來轉成月配息現金流。",
+  "positions": [
+    {
+      "ticker": "CSNDX",
+      "name": "CSNDX 核心成長部位",
+      "currency": "USD",
+      "quantity": 1488.10,
+      "pricePerShare": 210.00,
+      "annualDividendPerShare": 0.00,
+      "monthlyContributionUsd": 0
+    },
+    {
+      "ticker": "TSM",
+      "name": "Taiwan Semiconductor ADR",
+      "currency": "USD",
+      "quantity": 1773.05,
+      "pricePerShare": 176.20,
+      "annualDividendPerShare": 2.45,
+      "monthlyContributionUsd": 0
+    },
+    {
+      "ticker": "VWRA",
+      "name": "Vanguard FTSE All-World UCITS ETF",
+      "currency": "USD",
+      "quantity": 2232.14,
+      "pricePerShare": 140.00,
+      "annualDividendPerShare": 0.00,
+      "monthlyContributionUsd": 0
+    },
+    {
+      "ticker": "CSPX",
+      "name": "iShares Core S&P 500 UCITS ETF",
+      "currency": "USD",
+      "quantity": 458.72,
+      "pricePerShare": 681.00,
+      "annualDividendPerShare": 0.00,
+      "monthlyContributionUsd": 0
+    }
+  ],
+  "history": [
+    {
+      "date": "2026-03-15T00:00:00",
+      "assetValueTwd": 40000000,
+      "note": "以 4,000 萬台幣啟動退休投資計劃"
+    }
+  ]
+}

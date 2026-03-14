@@ -1,0 +1,231 @@
+@page "/"
+@inject retirement_dashboard.Services.PlanDataService PlanDataService
+
+<PageTitle>2030 Retirement Board</PageTitle>
+
+@if (_isLoading)
+{
+    <section class="loading-state">
+        <p>Loading retirement data...</p>
+    </section>
+}
+else if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <section class="error-state">
+        <h1>Data load failed</h1>
+        <p>@_errorMessage</p>
+    </section>
+}
+else if (_dashboard is not null)
+{
+    <section class="hero-panel">
+        <div class="hero-copy">
+            <p class="eyebrow">2030 Retirement Ops Board</p>
+            <h1>Turn a NT$150,000 monthly income goal into a daily visible plan.</h1>
+            <p class="hero-summary">
+                As of @_dashboard.AsOfDateText, current portfolio value is
+                <strong>@FormatCurrency(_dashboard.CurrentAssetTwd, "TWD")</strong>.
+                With an assumed yield of @_dashboard.AssumedAnnualYieldText,
+                the current annual income equivalent is
+                <strong>@FormatCurrency(_dashboard.CurrentAnnualDividendTwd, "TWD")</strong>.
+            </p>
+        </div>
+        <div class="hero-focus">
+            <div class="focus-card">
+                <span class="label">Target monthly income</span>
+                <strong>@FormatCurrency(_dashboard.TargetMonthlyIncomeTwd, "TWD")</strong>
+                <span class="muted">Annual target @FormatCurrency(_dashboard.TargetAnnualIncomeTwd, "TWD")</span>
+            </div>
+            <div class="focus-card accent">
+                <span class="label">Required capital</span>
+                <strong>@FormatCurrency(_dashboard.TargetCapitalTwd, "TWD")</strong>
+                <span class="muted">Back-calculated with @_dashboard.AssumedAnnualYieldText yield</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="metrics-grid">
+        <article class="metric-card">
+            <span class="metric-label">Progress now</span>
+            <strong>@_dashboard.ProgressPercentText</strong>
+            <p>@FormatCurrency(_dashboard.CurrentAssetTwd, "TWD") / @FormatCurrency(_dashboard.TargetCapitalTwd, "TWD")</p>
+            <div class="progress-track">
+                <div class="progress-value" style="width:@_dashboard.ProgressPercentCss"></div>
+            </div>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label">Time remaining</span>
+            <strong>@_dashboard.MonthsRemaining months</strong>
+            <p>Target date: @_dashboard.TargetDateText</p>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label">Monthly add-on budget</span>
+            <strong>@FormatCurrency(_dashboard.MonthlyContributionUsd, "USD")</strong>
+            <p>Current setup is one-time deployment first, @FormatCurrency(_dashboard.MonthlyContributionTwd, "TWD") per month</p>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label">Projected 2030 assets</span>
+            <strong>@FormatCurrency(_dashboard.ProjectedPortfolioAtTargetTwd, "TWD")</strong>
+            <p>Assuming @_dashboard.ExpectedAnnualReturnText annual return</p>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label">Projected 2030 monthly income</span>
+            <strong>@FormatCurrency(_dashboard.ProjectedMonthlyIncomeAtTargetTwd, "TWD")</strong>
+            <p>Gap to target: @FormatCurrency(_dashboard.MonthlyIncomeGapTwd, "TWD")</p>
+        </article>
+        <article class="metric-card alert">
+            <span class="metric-label">Capital gap</span>
+            <strong>@FormatCurrency(_dashboard.CapitalGapTwd, "TWD")</strong>
+            <p>If nothing changes, this is the remaining shortfall by 2030</p>
+        </article>
+    </section>
+
+    <section class="analysis-grid">
+        <article class="panel">
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">Key read</p>
+                    <h2>Plan signal</h2>
+                </div>
+            </div>
+            <ul class="signal-list">
+                <li>At the current pace, projected target completion is <strong>@_dashboard.ProjectedProgressPercentText</strong>.</li>
+                <li>Projected monthly income in 2030 is <strong>@FormatCurrency(_dashboard.ProjectedMonthlyIncomeAtTargetTwd, "TWD")</strong>.</li>
+                <li>To fully close the gap by the same date, additional monthly capital needed is <strong>@FormatCurrency(_dashboard.RequiredAdditionalMonthlySavingsTwd, "TWD")</strong>.</li>
+                <li>Current cash yield on portfolio value is <strong>@_dashboard.CurrentYieldOnCostText</strong>.</li>
+            </ul>
+        </article>
+
+        <article class="panel">
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">Core basket</p>
+                    <h2>NT$40M starting allocation</h2>
+                </div>
+            </div>
+            <div class="allocation-list">
+                @foreach (var position in _dashboard.Positions)
+                {
+                    <div class="allocation-row">
+                        <div>
+                            <strong>@position.Ticker</strong>
+                            <span>@position.MarketValueText</span>
+                        </div>
+                        <div class="allocation-bar">
+                            <div style="width:@position.AllocationShareCss"></div>
+                        </div>
+                        <span class="allocation-weight">@position.AllocationShareText</span>
+                    </div>
+                }
+            </div>
+        </article>
+    </section>
+
+    <section class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Position snapshot</p>
+                <h2>Current holdings</h2>
+            </div>
+            <span class="muted">Updated @_dashboard.AsOfDateText</span>
+        </div>
+        <div class="table-shell">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Shares</th>
+                        <th>Price</th>
+                        <th>Market value</th>
+                        <th>Annual income</th>
+                        <th>Weight</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var position in _dashboard.Positions)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@position.Ticker</strong>
+                                <div class="cell-note">@position.Name</div>
+                            </td>
+                            <td>@position.QuantityText</td>
+                            <td>@position.PriceText</td>
+                            <td>@position.MarketValueText</td>
+                            <td>@position.AnnualDividendText</td>
+                            <td>@position.AllocationShareText</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="analysis-grid">
+        <article class="panel">
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">Timeline</p>
+                    <h2>Growth path</h2>
+                </div>
+            </div>
+            <div class="timeline">
+                @foreach (var point in _dashboard.History)
+                {
+                    <div class="timeline-row">
+                        <div>
+                            <strong>@point.DateText</strong>
+                            <span>@point.Note</span>
+                        </div>
+                        <div>
+                            <strong>@point.AssetValueText</strong>
+                            <span>@point.ProgressText</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </article>
+
+        <article class="panel">
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">Daily update flow</p>
+                    <h2>Two-step maintenance</h2>
+                </div>
+            </div>
+            <ol class="step-list">
+                <li>Send me a broker screenshot and I will translate it into updated shares, prices and total assets.</li>
+                <li>I update <code>wwwroot/data/retirement-plan.json</code> and redeploy the board.</li>
+            </ol>
+            <p class="panel-note">@_dashboard.Notes</p>
+        </article>
+    </section>
+}
+
+@code {
+    private retirement_dashboard.Models.RetirementDashboardViewModel? _dashboard;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _dashboard = await PlanDataService.LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string FormatCurrency(decimal amount, string currencyCode)
+    {
+        var symbol = currencyCode == "USD" ? "US$" : "NT$";
+        return $"{symbol}{amount:N0}";
+    }
+}
