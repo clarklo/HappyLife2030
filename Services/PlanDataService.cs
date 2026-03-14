@@ -9,7 +9,8 @@ public sealed class PlanDataService(HttpClient httpClient)
 
     public async Task<RetirementDashboardViewModel> LoadAsync()
     {
-        var snapshot = await httpClient.GetFromJsonAsync<RetirementPlanSnapshot>(DataPath);
+        var cacheBustingPath = $"{DataPath}?v={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
+        var snapshot = await httpClient.GetFromJsonAsync<RetirementPlanSnapshot>(cacheBustingPath);
 
         if (snapshot is null)
         {
