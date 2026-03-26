@@ -16,6 +16,15 @@ dotnet restore --configfile .\NuGet.Config
 dotnet run
 ```
 
+## Deploy to Cloudflare Pages
+
+Cloudflare Pages build image does not include `dotnet` by default, so use the checked-in `build.sh` script.
+
+Build settings:
+
+- Build command: `./build.sh`
+- Build output directory: `output/wwwroot`
+
 ## Update daily data
 
 Edit:
