@@ -1,4 +1,5 @@
-@page "/"
+﻿@page "/"
+@implements IAsyncDisposable
 @inject retirement_dashboard.Services.PlanDataService PlanDataService
 
 <PageTitle>2030 退休戰情看板</PageTitle>
@@ -6,13 +7,13 @@
 @if (_isLoading)
 {
     <section class="loading-state">
-        <p>正在載入退休計劃資料...</p>
+        <p>正在載入退休規劃資料...</p>
     </section>
 }
 else if (!string.IsNullOrWhiteSpace(_errorMessage))
 {
     <section class="error-state">
-        <h1>資料載入失敗</h1>
+        <h1>讀取資料失敗</h1>
         <p>@_errorMessage</p>
     </section>
 }
@@ -20,37 +21,42 @@ else if (_dashboard is not null)
 {
     <section class="hero-panel">
         <div class="hero-copy">
+            <div class="live-meta">
+                <span class="status-pill @(_dashboard.IsLiveData ? "live" : "static")">@(_dashboard.IsLiveData ? "即時資料" : "靜態配置")</span>
+                <span>@_dashboard.DataSourceText</span>
+                <span>更新時間：@_dashboard.LastUpdatedText</span>
+                <span>@_dashboard.RefreshIntervalText</span>
+            </div>
             <p class="eyebrow">2030 退休戰情看板</p>
-            <h1>把每月 15 萬台幣的現金流目標，拆成每天都看得懂的進度。</h1>
+            <h1>先把資產做大，再在退休前兩年逐步轉成現金流。</h1>
             <p class="hero-summary">
-                截至 @_dashboard.AsOfDateText，目前已投入本金為
-                <strong>@FormatCurrency(_dashboard.CurrentInvestedTwd, "TWD")</strong>，
-                另有定存
-                <strong>@FormatCurrency(_dashboard.FixedDepositPrincipalTwd, "TWD")</strong>，
-                目前投資組合總資產為
-                <strong>@FormatCurrency(_dashboard.CurrentAssetTwd, "TWD")</strong>。
-                以假設殖利率 @_dashboard.AssumedAnnualYieldText 推估，
-                目前可對應的年化現金流約為
-                <strong>@FormatCurrency(_dashboard.CurrentAnnualDividendTwd, "TWD")</strong>。
+                截至 @_dashboard.AsOfDateText，目前總資產約為 <strong>@FormatCurrency(_dashboard.CurrentAssetTwd, "TWD")</strong>，
+                其中股票部位 <strong>@FormatCurrency(_dashboard.CurrentInvestedTwd, "TWD")</strong>，
+                定存本金 <strong>@FormatCurrency(_dashboard.FixedDepositPrincipalTwd, "TWD")</strong>。
+                依目前可直接領到現金的殖利率推估，現階段每月被動收入約為 <strong>@FormatCurrency(_dashboard.CurrentMonthlyPassiveIncomeTwd, "TWD")</strong>。
             </p>
+            @if (!string.IsNullOrWhiteSpace(_dashboard.LiveNotes))
+            {
+                <p class="panel-note">@_dashboard.LiveNotes</p>
+            }
         </div>
         <div class="hero-focus">
             <div class="focus-card">
-                <span class="label">目標月現金流</span>
+                <span class="label">目標月退休金</span>
                 <strong>@FormatCurrency(_dashboard.TargetMonthlyIncomeTwd, "TWD")</strong>
                 <span class="muted">年目標 @FormatCurrency(_dashboard.TargetAnnualIncomeTwd, "TWD")</span>
             </div>
             <div class="focus-card accent">
-                <span class="label">推算所需資產</span>
+                <span class="label">4% 法則所需資產</span>
                 <strong>@FormatCurrency(_dashboard.TargetCapitalTwd, "TWD")</strong>
-                <span class="muted">以 @_dashboard.AssumedAnnualYieldText 殖利率反推</span>
+                <span class="muted">目前進度 @_dashboard.ProgressPercentText</span>
             </div>
         </div>
     </section>
 
     <section class="metrics-grid">
         <article class="metric-card">
-            <span class="metric-label">目前進度</span>
+            <span class="metric-label">目前總進度</span>
             <strong>@_dashboard.ProgressPercentText</strong>
             <p>@FormatCurrency(_dashboard.CurrentAssetTwd, "TWD") / @FormatCurrency(_dashboard.TargetCapitalTwd, "TWD")</p>
             <div class="progress-track">
@@ -63,29 +69,34 @@ else if (_dashboard is not null)
             <p>目標日期：@_dashboard.TargetDateText</p>
         </article>
         <article class="metric-card">
-            <span class="metric-label">@_dashboard.AnnualPlanYear 年每月應投入</span>
-            <strong>@FormatCurrency(_dashboard.RequiredMonthlyInvestmentTwd, "TWD")</strong>
-            <p>約 @FormatCurrency(_dashboard.RequiredMonthlyInvestmentUsd, "USD") / 月，目標至 @_dashboard.AnnualPlanDeadlineText</p>
+            <span class="metric-label">今年仍需投入</span>
+            <strong>@FormatCurrency(_dashboard.AnnualInvestmentGapTwd, "TWD")</strong>
+            <p>年度投資目標 @FormatCurrency(_dashboard.AnnualInvestmentTargetTwd, "TWD")</p>
         </article>
         <article class="metric-card">
-            <span class="metric-label">定存本金</span>
-            <strong>@FormatCurrency(_dashboard.FixedDepositPrincipalTwd, "TWD")</strong>
-            <p>年利率 @_dashboard.FixedDepositRateText，年息約 @FormatCurrency(_dashboard.FixedDepositAnnualInterestTwd, "TWD")</p>
+            <span class="metric-label">定存年利息</span>
+            <strong>@FormatCurrency(_dashboard.FixedDepositAnnualInterestTwd, "TWD")</strong>
+            <p>定存利率 @_dashboard.FixedDepositRateText</p>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label">目前現金殖利率</span>
+            <strong>@_dashboard.LiveIncomeYieldRateText</strong>
+            <p>含定存利息與目前持股可直接領到的現金股利</p>
+        </article>
+        <article class="metric-card accent">
+            <span class="metric-label">2030 預估月退休金</span>
+            <strong>@FormatCurrency(_dashboard.LiveProjectedMonthlyIncomeAtTargetTwd, "TWD")</strong>
+            <p>依最新現金殖利率推估</p>
         </article>
         <article class="metric-card">
             <span class="metric-label">2030 預估總資產</span>
             <strong>@FormatCurrency(_dashboard.ProjectedPortfolioAtTargetTwd, "TWD")</strong>
-            <p>假設年化報酬 @_dashboard.ExpectedAnnualReturnText</p>
-        </article>
-        <article class="metric-card">
-            <span class="metric-label">2030 預估月現金流</span>
-            <strong>@FormatCurrency(_dashboard.ProjectedMonthlyIncomeAtTargetTwd, "TWD")</strong>
-            <p>距離目標差額：@FormatCurrency(_dashboard.MonthlyIncomeGapTwd, "TWD")</p>
+            <p>年化報酬假設 @_dashboard.ExpectedAnnualReturnText</p>
         </article>
         <article class="metric-card alert">
-            <span class="metric-label">資產缺口</span>
-            <strong>@FormatCurrency(_dashboard.CapitalGapTwd, "TWD")</strong>
-            <p>若規劃不變，2030 年仍需補足的差距</p>
+            <span class="metric-label">4% 法則月退休金</span>
+            <strong>@FormatCurrency(_dashboard.ProjectedMonthlyIncomeAtTargetTwd, "TWD")</strong>
+            <p>若 2030 轉成 4% 現金流配置，距目標差額 @FormatCurrency(_dashboard.MonthlyIncomeGapTwd, "TWD")</p>
         </article>
     </section>
 
@@ -93,15 +104,15 @@ else if (_dashboard is not null)
         <article class="panel">
             <div class="panel-heading">
                 <div>
-                    <p class="eyebrow">年度投入計畫</p>
-                    <h2>@_dashboard.AnnualPlanYear 年 2,000 萬目標</h2>
+                    <p class="eyebrow">積極版配置</p>
+                    <h2>4,500 萬資產拆分</h2>
                 </div>
             </div>
             <ul class="signal-list">
-                <li>年度目標投入金額為 <strong>@FormatCurrency(_dashboard.AnnualInvestmentTargetTwd, "TWD")</strong>，目前已投入 <strong>@FormatCurrency(_dashboard.CurrentInvestedTwd, "TWD")</strong>。</li>
-                <li>目前完成度為 <strong>@_dashboard.AnnualPlanProgressText</strong>，距離年底尚有 <strong>@FormatCurrency(_dashboard.AnnualInvestmentGapTwd, "TWD")</strong> 要投入。</li>
-                <li>依照今天 @(_dashboard.AnnualPlanMonthsRemaining) 個月剩餘期間估算，平均每月需投入 <strong>@FormatCurrency(_dashboard.RequiredMonthlyInvestmentTwd, "TWD")</strong>。</li>
-                <li>@(_dashboard.RequiredMonthlyInvestmentTwd <= 3000000m ? "以高資產配置者來看，這個節奏可執行，但要維持穩定資金安排。" : "這個節奏偏高，建議再確認資金調度，避免年底前壓力過大。")</li>
+                <li>定存固定保留 <strong>@FormatCurrency(_dashboard.FixedDepositPrincipalTwd, "TWD")</strong>，作為安全墊與未來轉倉緩衝。</li>
+                <li>股票部位以成長為核心，TSM 與 CSNDX 各自佔整體資產約兩成，波動會比平衡版明顯。</li>
+                <li>目前依照配置，年度投資計畫完成度為 <strong>@_dashboard.AnnualPlanProgressText</strong>。</li>
+                <li>@(_dashboard.AnnualPlanIsOnTrack ? "今年 3,000 萬股票配置已到位，可以把重點放在再平衡與股價更新。" : $"若要在 {_dashboard.AnnualPlanDeadlineText} 前完成今年配置，平均每月還要投入 {FormatCurrency(_dashboard.RequiredMonthlyInvestmentTwd, "TWD")}。")</li>
             </ul>
             <div class="progress-track">
                 <div class="progress-value" style="width:@_dashboard.AnnualPlanProgressCss"></div>
@@ -111,16 +122,15 @@ else if (_dashboard is not null)
         <article class="panel">
             <div class="panel-heading">
                 <div>
-                    <p class="eyebrow">重點判讀</p>
-                    <h2>計劃訊號</h2>
+                    <p class="eyebrow">2030 情境</p>
+                    <h2>兩種退休金看法</h2>
                 </div>
             </div>
             <ul class="signal-list">
-                <li>若今年能完成 2,000 萬投入並沿用同樣報酬假設，2030 年預估可達成 <strong>@_dashboard.ProjectedProgressPercentText</strong> 的資產目標。</li>
-                <li>2030 年預估每月現金流約為 <strong>@FormatCurrency(_dashboard.ProjectedMonthlyIncomeAtTargetTwd, "TWD")</strong>。</li>
-                <li>其中定存部位若持續以 @_dashboard.FixedDepositRateText 複利滾存，2030 年約可成長到 <strong>@FormatCurrency(_dashboard.ProjectedFixedDepositAtTargetTwd, "TWD")</strong>。</li>
-                <li>若要在同一日期內補足差距，平均每月仍需增加 <strong>@FormatCurrency(_dashboard.RequiredAdditionalMonthlySavingsTwd, "TWD")</strong> 的本金。</li>
-                <li>目前投組對應現金收益率約為 <strong>@_dashboard.CurrentYieldOnCostText</strong>。</li>
+                <li>若沿用 4% 現金流法則，2030 每月約可領 <strong>@FormatCurrency(_dashboard.ProjectedMonthlyIncomeAtTargetTwd, "TWD")</strong>。</li>
+                <li>若完全不換成配息型資產，而只看目前可直接領的現金殖利率，2030 每月約為 <strong>@FormatCurrency(_dashboard.LiveProjectedMonthlyIncomeAtTargetTwd, "TWD")</strong>。</li>
+                <li>兩者差距代表你在 2028 到 2030 之間，仍要安排一段把成長資產換成現金流的過程。</li>
+                <li>目前投組現金殖利率約 <strong>@_dashboard.CurrentYieldOnCostText</strong>，遠低於 4% 退休提領假設。</li>
             </ul>
         </article>
     </section>
@@ -128,8 +138,8 @@ else if (_dashboard is not null)
     <section class="panel">
         <div class="panel-heading">
             <div>
-                <p class="eyebrow">定期定額建議</p>
-                <h2>今年內投入 2,000 萬台幣的分配節奏</h2>
+                <p class="eyebrow">目前部位</p>
+                <h2>積極版持倉快照</h2>
             </div>
         </div>
         <div class="allocation-list">
@@ -148,19 +158,17 @@ else if (_dashboard is not null)
             }
         </div>
         <p class="panel-note">
-            建議以目前關注的四檔平均配置。若要達成今年投入 2,000 萬台幣，
-            每月可先抓 <strong>@FormatCurrency(_dashboard.RequiredMonthlyInvestmentTwd / 4m, "TWD")</strong> 到每一檔。
-            等你實際下單後，我再依真實成交結果調整比重。
+            定存沒有畫進上方股票配置條，但它仍占總資產的重要比重。若 TSM 或 CSNDX 單一部位拉高到總資產 25% 以上，建議先做一次再平衡。
         </p>
     </section>
 
     <section class="panel">
         <div class="panel-heading">
             <div>
-                <p class="eyebrow">持股快照</p>
-                <h2>目前部位</h2>
+                <p class="eyebrow">估值明細</p>
+                <h2>最新價格與現金股利</h2>
             </div>
-            <span class="muted">更新日 @_dashboard.AsOfDateText</span>
+            <span class="muted">資料日期 @_dashboard.AsOfDateText</span>
         </div>
         <div class="table-shell">
             <table>
@@ -170,7 +178,7 @@ else if (_dashboard is not null)
                         <th>股數</th>
                         <th>價格</th>
                         <th>市值</th>
-                        <th>年化現金流</th>
+                        <th>年現金股利</th>
                         <th>比重</th>
                     </tr>
                 </thead>
@@ -198,8 +206,8 @@ else if (_dashboard is not null)
         <article class="panel">
             <div class="panel-heading">
                 <div>
-                    <p class="eyebrow">時間軸</p>
-                    <h2>成長軌跡</h2>
+                    <p class="eyebrow">歷程紀錄</p>
+                    <h2>配置時間軸</h2>
                 </div>
             </div>
             <div class="timeline">
@@ -222,13 +230,14 @@ else if (_dashboard is not null)
         <article class="panel">
             <div class="panel-heading">
                 <div>
-                    <p class="eyebrow">每日更新流程</p>
-                    <h2>兩步維護</h2>
+                    <p class="eyebrow">更新流程</p>
+                    <h2>Cloudflare 每 5 分鐘同步</h2>
                 </div>
             </div>
             <ol class="step-list">
-                <li>你把券商截圖傳給我，我幫你整理成最新股數、價格與總資產。</li>
-                <li>我更新 <code>wwwroot/data/retirement-plan.json</code> 後重新部署。</li>
+                <li>Pages 繼續提供靜態網站，保留你的基準配置與手動備援資料。</li>
+                <li>Worker 每 5 分鐘抓一次最新價格，更新可直接領現金的股利估算，再寫回快取。</li>
+                <li>首頁優先讀 Worker API；如果即時來源暫時失敗，就自動退回本地 JSON，不會整站空白。</li>
             </ol>
             <p class="panel-note">@_dashboard.Notes</p>
         </article>
@@ -239,12 +248,22 @@ else if (_dashboard is not null)
     private retirement_dashboard.Models.RetirementDashboardViewModel? _dashboard;
     private bool _isLoading = true;
     private string? _errorMessage;
+    private PeriodicTimer? _refreshTimer;
+    private CancellationTokenSource? _refreshCancellation;
+    private Task? _refreshLoopTask;
 
     protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardAsync();
+        StartRefreshLoop();
+    }
+
+    private async Task LoadDashboardAsync()
     {
         try
         {
             _dashboard = await PlanDataService.LoadAsync();
+            _errorMessage = null;
         }
         catch (Exception ex)
         {
@@ -253,6 +272,44 @@ else if (_dashboard is not null)
         finally
         {
             _isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void StartRefreshLoop()
+    {
+        _refreshCancellation = new CancellationTokenSource();
+        _refreshTimer = new PeriodicTimer(TimeSpan.FromMinutes(5));
+        _refreshLoopTask = RunRefreshLoopAsync(_refreshCancellation.Token);
+    }
+
+    private async Task RunRefreshLoopAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (_refreshTimer is not null && await _refreshTimer.WaitForNextTickAsync(cancellationToken))
+            {
+                await LoadDashboardAsync();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_refreshCancellation is not null)
+        {
+            _refreshCancellation.Cancel();
+            _refreshCancellation.Dispose();
+        }
+
+        _refreshTimer?.Dispose();
+
+        if (_refreshLoopTask is not null)
+        {
+            await _refreshLoopTask;
         }
     }
 

@@ -1,4 +1,4 @@
-:root {
+﻿:root {
     --bg: #06141b;
     --panel: rgba(10, 32, 39, 0.78);
     --line: rgba(154, 199, 184, 0.14);
@@ -61,6 +61,34 @@ code {
     border-radius: 28px;
 }
 
+.live-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.22rem 0.7rem;
+    border-radius: 999px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.status-pill.live {
+    color: #06261b;
+    background: linear-gradient(90deg, #7be0b7, #d5ffde);
+}
+
+.status-pill.static {
+    color: #ffefce;
+    background: rgba(242, 179, 93, 0.22);
+}
+
 .eyebrow {
     color: var(--gold);
     letter-spacing: 0.16em;
@@ -104,7 +132,8 @@ code {
     margin: 0.5rem 0;
 }
 
-.focus-card.accent {
+.focus-card.accent,
+.metric-card.accent {
     background: linear-gradient(135deg, rgba(123, 224, 183, 0.12), rgba(242, 179, 93, 0.18));
 }
 
@@ -127,7 +156,7 @@ code {
 }
 
 .metrics-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .analysis-grid {
@@ -295,7 +324,6 @@ thead th {
 
 @media (max-width: 980px) {
     .hero-panel,
-    .metrics-grid,
     .analysis-grid {
         grid-template-columns: 1fr;
     }

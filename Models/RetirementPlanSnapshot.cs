@@ -1,4 +1,4 @@
-namespace retirement_dashboard.Models;
+﻿namespace retirement_dashboard.Models;
 
 public sealed class RetirementPlanSnapshot
 {
@@ -11,6 +11,8 @@ public sealed class RetirementPlanSnapshot
     public PortfolioAssumptions Assumptions { get; set; } = new();
 
     public FixedDepositPlan FixedDeposit { get; set; } = new();
+
+    public LiveDataSettings LiveData { get; set; } = new();
 
     public decimal CurrentCashTwd { get; set; }
 
@@ -57,6 +59,19 @@ public sealed class FixedDepositPlan
     public decimal AnnualInterestRate { get; set; }
 
     public bool ReinvestInterest { get; set; }
+}
+
+public sealed class LiveDataSettings
+{
+    public bool IsLive { get; set; }
+
+    public string Source { get; set; } = string.Empty;
+
+    public DateTime? LastUpdatedUtc { get; set; }
+
+    public int RefreshIntervalMinutes { get; set; } = 5;
+
+    public string Notes { get; set; } = string.Empty;
 }
 
 public sealed class InvestmentPosition

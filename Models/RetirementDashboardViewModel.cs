@@ -1,4 +1,4 @@
-namespace retirement_dashboard.Models;
+﻿namespace retirement_dashboard.Models;
 
 public sealed class RetirementDashboardViewModel
 {
@@ -9,6 +9,18 @@ public sealed class RetirementDashboardViewModel
     public DateTime TargetDate { get; init; }
 
     public string TargetDateText { get; init; } = string.Empty;
+
+    public bool IsLiveData { get; init; }
+
+    public string DataSourceText { get; init; } = string.Empty;
+
+    public string LastUpdatedText { get; init; } = string.Empty;
+
+    public int RefreshIntervalMinutes { get; init; }
+
+    public string RefreshIntervalText { get; init; } = string.Empty;
+
+    public string LiveNotes { get; init; } = string.Empty;
 
     public decimal CurrentAssetTwd { get; init; }
 
@@ -21,6 +33,14 @@ public sealed class RetirementDashboardViewModel
     public decimal ProjectedFixedDepositAtTargetTwd { get; init; }
 
     public decimal CurrentAnnualDividendTwd { get; init; }
+
+    public decimal CurrentMonthlyPassiveIncomeTwd { get; init; }
+
+    public decimal LiveIncomeYieldRate { get; init; }
+
+    public string LiveIncomeYieldRateText { get; init; } = string.Empty;
+
+    public decimal LiveProjectedMonthlyIncomeAtTargetTwd { get; init; }
 
     public decimal TargetMonthlyIncomeTwd { get; init; }
 

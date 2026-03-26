@@ -1,0 +1,19 @@
+﻿name = "happylife2030-live-plan"
+main = "src/index.ts"
+compatibility_date = "2026-03-27"
+workers_dev = true
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[vars]
+PAGES_BASE_URL = "https://happylife2030.pages.dev"
+CORS_ORIGIN = "https://happylife2030.pages.dev"
+USD_TWD_RATE = "32"
+
+# Add a KV binding named PLAN_CACHE in the Cloudflare dashboard
+# or uncomment and fill the IDs below when deploying with Wrangler.
+# [[kv_namespaces]]
+# binding = "PLAN_CACHE"
+# id = "replace-with-your-kv-id"
+# preview_id = "replace-with-your-preview-kv-id"

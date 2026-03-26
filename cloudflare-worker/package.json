@@ -1,0 +1,13 @@
+﻿{
+  "name": "happylife2030-live-plan-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "wrangler": "^4.8.0"
+  }
+}

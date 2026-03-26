@@ -1,71 +1,78 @@
-{
-  "asOfDate": "2026-03-15T00:00:00",
+﻿{
+  "asOfDate": "2026-03-27T00:00:00",
   "goal": {
     "targetDate": "2030-12-31T00:00:00",
     "targetMonthlyIncomeTwd": 150000
   },
   "annualPlan": {
     "year": 2026,
-    "targetInvestmentTwd": 20000000,
+    "targetInvestmentTwd": 30000000,
     "deadline": "2026-12-31T00:00:00"
   },
   "fixedDeposit": {
-    "principalTwd": 20000000,
+    "principalTwd": 15000000,
     "annualInterestRate": 0.017,
     "reinvestInterest": true
   },
+  "liveData": {
+    "isLive": false,
+    "source": "手動配置資料",
+    "lastUpdatedUtc": null,
+    "refreshIntervalMinutes": 5,
+    "notes": "Cloudflare Worker 連接完成後，首頁會自動切換成每 5 分鐘更新的即時資料。"
+  },
   "assumptions": {
     "assumedAnnualYieldRate": 0.04,
-    "expectedAnnualReturnRate": 0.08,
+    "expectedAnnualReturnRate": 0.10,
     "usdToTwdRate": 32,
     "monthlyContributionUsd": 0,
     "reinvestDividends": true
   },
   "currentCashTwd": 0,
-  "notes": "年度目標改為 2026 年底前累積投入 2,000 萬台幣，另有 2,000 萬台幣定存以年利率 1.7% 滾存。依 2026-03-15 截圖，TSM ADR 已持有 143.3263 股；CSNDX、VWRA、CSPX 目前先視為觀察清單。後續再依券商截圖更新其餘實際成交股數與價格。",
+  "notes": "積極版配置：定存 1,500 萬固定不動，其餘 3,000 萬分配為 TSM 900 萬、CSNDX 900 萬、CSPX 750 萬、VWRA 450 萬。2028 年起再視市場與退休節奏，逐步轉向現金流資產。",
   "positions": [
     {
-      "ticker": "CSNDX",
-      "name": "CSNDX 觀察清單",
+      "ticker": "TSM",
+      "name": "台積電 ADR",
       "currency": "USD",
-      "quantity": 0,
+      "quantity": 802.8145,
+      "pricePerShare": 350.33,
+      "annualDividendPerShare": 3.52,
+      "monthlyContributionUsd": 0
+    },
+    {
+      "ticker": "CSNDX",
+      "name": "iShares NASDAQ 100 UCITS ETF (Acc)",
+      "currency": "USD",
+      "quantity": 200.6063,
       "pricePerShare": 1402.00,
       "annualDividendPerShare": 0.00,
       "monthlyContributionUsd": 0
     },
     {
-      "ticker": "TSM",
-      "name": "台積電 ADR",
+      "ticker": "CSPX",
+      "name": "iShares Core S&P 500 UCITS ETF (Acc)",
       "currency": "USD",
-      "quantity": 143.3263,
-      "pricePerShare": 337.80,
-      "annualDividendPerShare": 2.45,
-      "monthlyContributionUsd": 0
-    },
-    {
-      "ticker": "VWRA",
-      "name": "Vanguard 全球股票 ETF",
-      "currency": "USD",
-      "quantity": 0,
-      "pricePerShare": 167.82,
+      "quantity": 313.6165,
+      "pricePerShare": 747.33,
       "annualDividendPerShare": 0.00,
       "monthlyContributionUsd": 0
     },
     {
-      "ticker": "CSPX",
-      "name": "iShares 標普 500 ETF",
+      "ticker": "VWRA",
+      "name": "Vanguard FTSE All-World UCITS ETF (Acc)",
       "currency": "USD",
-      "quantity": 0,
-      "pricePerShare": 714.90,
+      "quantity": 801.4647,
+      "pricePerShare": 175.46,
       "annualDividendPerShare": 0.00,
       "monthlyContributionUsd": 0
     }
   ],
   "history": [
     {
-      "date": "2026-03-15T00:00:00",
-      "assetValueTwd": 1549442,
-      "note": "已確認 TSM ADR 持有 143.3263 股，其餘標的暫列觀察清單。"
+      "date": "2026-03-27T00:00:00",
+      "assetValueTwd": 45000000,
+      "note": "將總資產調整為 4,500 萬台幣的積極版配置，並保留 1,500 萬定存作為安全墊。"
     }
   ]
 }

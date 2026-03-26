@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using retirement_dashboard.Models;
 
 namespace retirement_dashboard.Services;
@@ -6,18 +6,70 @@ namespace retirement_dashboard.Services;
 public sealed class PlanDataService(HttpClient httpClient)
 {
     private const string DataPath = "data/retirement-plan.json";
+    private const string RuntimeConfigPath = "data/runtime-config.json";
 
     public async Task<RetirementDashboardViewModel> LoadAsync()
     {
-        var cacheBustingPath = $"{DataPath}?v={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
-        var snapshot = await httpClient.GetFromJsonAsync<RetirementPlanSnapshot>(cacheBustingPath);
+        var snapshot = await TryLoadLiveSnapshotAsync() ?? await LoadStaticSnapshotAsync();
+        return BuildViewModel(snapshot);
+    }
+
+    private async Task<RetirementPlanSnapshot?> TryLoadLiveSnapshotAsync()
+    {
+        var runtimeConfig = await LoadRuntimeConfigAsync();
+        if (string.IsNullOrWhiteSpace(runtimeConfig.LiveApiUrl))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, AppendCacheBuster(runtimeConfig.LiveApiUrl));
+            request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true, NoStore = true };
+
+            using var response = await httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync<RetirementPlanSnapshot>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task<RetirementPlanSnapshot> LoadStaticSnapshotAsync()
+    {
+        var snapshot = await httpClient.GetFromJsonAsync<RetirementPlanSnapshot>(AppendCacheBuster(DataPath));
 
         if (snapshot is null)
         {
-            throw new InvalidOperationException("找不到退休計劃資料檔。");
+            throw new InvalidOperationException("目前無法讀取退休規劃資料。請稍後再試。");
         }
 
-        return BuildViewModel(snapshot);
+        return snapshot;
+    }
+
+    private async Task<RuntimeConfig> LoadRuntimeConfigAsync()
+    {
+        try
+        {
+            var config = await httpClient.GetFromJsonAsync<RuntimeConfig>(AppendCacheBuster(RuntimeConfigPath));
+            return config ?? new RuntimeConfig();
+        }
+        catch
+        {
+            return new RuntimeConfig();
+        }
+    }
+
+    private static string AppendCacheBuster(string path)
+    {
+        var separator = path.Contains('?') ? '&' : '?';
+        return $"{path}{separator}v={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
     }
 
     private static RetirementDashboardViewModel BuildViewModel(RetirementPlanSnapshot snapshot)
@@ -34,6 +86,7 @@ public sealed class PlanDataService(HttpClient httpClient)
         var currentAnnualDividendTwd =
             snapshot.Positions.Sum(position => ConvertToTwd(position.Quantity * position.AnnualDividendPerShare, position.Currency, usdToTwdRate)) +
             fixedDepositAnnualInterestTwd;
+        var currentMonthlyPassiveIncomeTwd = currentAnnualDividendTwd / 12m;
 
         var monthsRemaining = Math.Max(0, ((snapshot.Goal.TargetDate.Year - snapshot.AsOfDate.Year) * 12) + snapshot.Goal.TargetDate.Month - snapshot.AsOfDate.Month);
         var annualPlanMonthsRemaining = snapshot.AnnualPlan.Year == snapshot.AsOfDate.Year
@@ -56,6 +109,8 @@ public sealed class PlanDataService(HttpClient httpClient)
         var projectedPortfolioAtTargetTwd = projectedInvestedAssetsAtTargetTwd + projectedFixedDepositAtTargetTwd;
 
         var projectedMonthlyIncomeAtTargetTwd = projectedPortfolioAtTargetTwd * snapshot.Assumptions.AssumedAnnualYieldRate / 12m;
+        var liveIncomeYieldRate = currentAssetTwd == 0 ? 0 : currentAnnualDividendTwd / currentAssetTwd;
+        var liveProjectedMonthlyIncomeAtTargetTwd = projectedPortfolioAtTargetTwd * liveIncomeYieldRate / 12m;
         var capitalGapTwd = Math.Max(0m, targetCapitalTwd - projectedPortfolioAtTargetTwd);
         var monthlyIncomeGapTwd = Math.Max(0m, targetMonthlyIncomeTwd - projectedMonthlyIncomeAtTargetTwd);
         var requiredAdditionalMonthlySavingsTwd = monthsRemaining == 0 ? capitalGapTwd : capitalGapTwd / monthsRemaining;
@@ -85,7 +140,7 @@ public sealed class PlanDataService(HttpClient httpClient)
             .ToList();
 
         var history = snapshot.History
-            .OrderBy(point => point.Date)
+            .OrderByDescending(point => point.Date)
             .Select(point =>
             {
                 var progress = targetCapitalTwd == 0 ? 0 : point.AssetValueTwd / targetCapitalTwd;
@@ -102,6 +157,9 @@ public sealed class PlanDataService(HttpClient httpClient)
         var progressPercent = targetCapitalTwd == 0 ? 0 : currentAssetTwd / targetCapitalTwd;
         var projectedProgressPercent = targetCapitalTwd == 0 ? 0 : projectedPortfolioAtTargetTwd / targetCapitalTwd;
         var currentYieldOnCost = currentAssetTwd == 0 ? 0 : currentAnnualDividendTwd / currentAssetTwd;
+        var lastUpdatedText = snapshot.LiveData.LastUpdatedUtc is { } updatedUtc
+            ? updatedUtc.ToLocalTime().ToString("yyyy/MM/dd HH:mm")
+            : snapshot.AsOfDate.ToString("yyyy/MM/dd");
 
         return new RetirementDashboardViewModel
         {
@@ -109,12 +167,22 @@ public sealed class PlanDataService(HttpClient httpClient)
             AsOfDateText = snapshot.AsOfDate.ToString("yyyy/MM/dd"),
             TargetDate = snapshot.Goal.TargetDate,
             TargetDateText = snapshot.Goal.TargetDate.ToString("yyyy/MM/dd"),
+            IsLiveData = snapshot.LiveData.IsLive,
+            DataSourceText = string.IsNullOrWhiteSpace(snapshot.LiveData.Source) ? "手動配置資料" : snapshot.LiveData.Source,
+            LastUpdatedText = lastUpdatedText,
+            RefreshIntervalMinutes = snapshot.LiveData.RefreshIntervalMinutes,
+            RefreshIntervalText = $"每 {snapshot.LiveData.RefreshIntervalMinutes} 分鐘更新一次",
+            LiveNotes = snapshot.LiveData.Notes,
             CurrentAssetTwd = currentAssetTwd,
             CurrentInvestedTwd = currentInvestedTwd,
             FixedDepositPrincipalTwd = fixedDepositPrincipalTwd,
             FixedDepositAnnualInterestTwd = fixedDepositAnnualInterestTwd,
             ProjectedFixedDepositAtTargetTwd = projectedFixedDepositAtTargetTwd,
             CurrentAnnualDividendTwd = currentAnnualDividendTwd,
+            CurrentMonthlyPassiveIncomeTwd = currentMonthlyPassiveIncomeTwd,
+            LiveIncomeYieldRate = liveIncomeYieldRate,
+            LiveIncomeYieldRateText = $"{liveIncomeYieldRate:P2}",
+            LiveProjectedMonthlyIncomeAtTargetTwd = liveProjectedMonthlyIncomeAtTargetTwd,
             AnnualPlanYear = snapshot.AnnualPlan.Year,
             AnnualPlanDeadlineText = snapshot.AnnualPlan.Deadline.ToString("yyyy/MM/dd"),
             AnnualPlanMonthsRemaining = annualPlanMonthsRemaining,
@@ -173,5 +241,10 @@ public sealed class PlanDataService(HttpClient httpClient)
     private static decimal ConvertToTwd(decimal amount, string currency, decimal usdToTwdRate)
     {
         return currency == "USD" ? amount * usdToTwdRate : amount;
+    }
+
+    private sealed class RuntimeConfig
+    {
+        public string LiveApiUrl { get; set; } = string.Empty;
     }
 }
