@@ -1,4 +1,4 @@
-﻿bin/
+bin/
 obj/
 release/
 output/
@@ -8,3 +8,5 @@ run.log
 run.err.log
 cloudflare-worker/node_modules/
 cloudflare-worker/.wrangler/
+
+IbGatewaySync/appsettings.json

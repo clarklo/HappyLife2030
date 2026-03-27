@@ -4,6 +4,7 @@ export interface Env {
   CORS_ORIGIN?: string;
   USD_TWD_RATE?: string;
   LEEWAY_API_TOKEN?: string;
+  WORKER_INGEST_TOKEN?: string;
 }
 
 type PlanSnapshot = {
@@ -69,6 +70,24 @@ type InstrumentConfig = {
   code: string;
 };
 
+type IngestPositionUpdate = {
+  ticker: string;
+  name?: string;
+  currency?: string;
+  quantity?: number;
+  pricePerShare?: number;
+  annualDividendPerShare?: number;
+};
+
+type IngestRequest = {
+  source?: string;
+  notes?: string;
+  asOfDate?: string;
+  refreshIntervalMinutes?: number;
+  currentCashTwd?: number;
+  positions?: IngestPositionUpdate[];
+};
+
 const CACHE_KEY = "retirement-plan-live-v3";
 const CACHE_TTL_SECONDS = 60 * 60 * 2;
 const REFRESH_INTERVAL_MINUTES = 120;
@@ -97,13 +116,21 @@ export default {
           ok: true,
           cacheEnabled: Boolean(env.PLAN_CACHE),
           quoteProvider: "leeway",
-          apiKeyConfigured: Boolean(env.LEEWAY_API_TOKEN)
+          apiKeyConfigured: Boolean(env.LEEWAY_API_TOKEN),
+          ingestConfigured: Boolean(env.WORKER_INGEST_TOKEN)
         },
         env
       );
     }
 
     try {
+      if (url.pathname === "/api/ingest" && request.method === "POST") {
+        assertIngestAuthorized(request, env);
+        const payload = await request.json<IngestRequest>();
+        const snapshot = await ingestSnapshot(payload, env);
+        return json(snapshot, env);
+      }
+
       if (url.pathname === "/api/refresh") {
         const snapshot = await refreshPlan(env);
         return json(snapshot, env);
@@ -121,6 +148,10 @@ export default {
 
       return json({ error: "Not found" }, env, 404);
     } catch (error) {
+      if (error instanceof HttpError) {
+        return json({ error: error.message }, env, error.status);
+      }
+
       const fallback = await loadBasePlan(env, `Worker fallback: ${toErrorMessage(error)}`);
       return json(fallback, env);
     }
@@ -194,13 +225,98 @@ async function refreshPlan(env: Env): Promise<PlanSnapshot> {
     ]
   };
 
-  if (env.PLAN_CACHE) {
-    await env.PLAN_CACHE.put(CACHE_KEY, JSON.stringify(snapshot), {
-      expirationTtl: CACHE_TTL_SECONDS
-    });
-  }
+  await storeSnapshot(snapshot, env);
 
   return snapshot;
+}
+
+async function ingestSnapshot(payload: IngestRequest, env: Env): Promise<PlanSnapshot> {
+  const baseSnapshot = await loadCurrentSnapshot(env);
+  const refreshedAt = payload.asOfDate ?? new Date().toISOString();
+  const updates = new Map((payload.positions ?? []).map((position) => [position.ticker.toUpperCase(), position]));
+
+  const positions = baseSnapshot.positions.map((position) => {
+    const update = updates.get(position.ticker.toUpperCase());
+    if (!update) {
+      return position;
+    }
+
+    return {
+      ...position,
+      name: update.name ?? position.name,
+      currency: update.currency ?? position.currency,
+      quantity: update.quantity ?? position.quantity,
+      pricePerShare: update.pricePerShare !== undefined ? toMoney(update.pricePerShare) : position.pricePerShare,
+      annualDividendPerShare: update.annualDividendPerShare !== undefined
+        ? toMoney(update.annualDividendPerShare)
+        : position.annualDividendPerShare
+    };
+  });
+
+  const investedTwd = positions.reduce((sum, position) => {
+    const fx = position.currency === "USD" ? baseSnapshot.assumptions.usdToTwdRate : 1;
+    return sum + (position.quantity * position.pricePerShare * fx);
+  }, 0);
+  const currentCashTwd = payload.currentCashTwd ?? baseSnapshot.currentCashTwd;
+  const assetValueTwd = investedTwd + baseSnapshot.fixedDeposit.principalTwd + currentCashTwd;
+  const source = payload.source?.trim() || "IBKR Client Portal Gateway";
+  const notes = payload.notes?.trim()
+    || "Snapshot updated by a local .NET sync job using the IBKR Client Portal Gateway.";
+  const refreshIntervalMinutes = payload.refreshIntervalMinutes ?? (24 * 60);
+
+  const snapshot: PlanSnapshot = {
+    ...baseSnapshot,
+    asOfDate: refreshedAt,
+    currentCashTwd,
+    positions,
+    liveData: {
+      isLive: true,
+      source,
+      lastUpdatedUtc: refreshedAt,
+      refreshIntervalMinutes,
+      notes
+    },
+    history: [
+      {
+        date: refreshedAt,
+        assetValueTwd: toMoney(assetValueTwd),
+        note: `${source} updated the dashboard snapshot from IBKR.`
+      },
+      ...baseSnapshot.history.filter((point) => point.date !== refreshedAt).slice(0, 11)
+    ]
+  };
+
+  await storeSnapshot(snapshot, env);
+  return snapshot;
+}
+
+async function loadCurrentSnapshot(env: Env): Promise<PlanSnapshot> {
+  const cached = await env.PLAN_CACHE?.get<PlanSnapshot>(CACHE_KEY, "json");
+  return cached ?? loadBasePlan(env);
+}
+
+async function storeSnapshot(snapshot: PlanSnapshot, env: Env): Promise<void> {
+  if (!env.PLAN_CACHE) {
+    return;
+  }
+
+  await env.PLAN_CACHE.put(CACHE_KEY, JSON.stringify(snapshot), {
+    expirationTtl: CACHE_TTL_SECONDS
+  });
+}
+
+function assertIngestAuthorized(request: Request, env: Env): void {
+  const expectedToken = env.WORKER_INGEST_TOKEN?.trim();
+  if (!expectedToken) {
+    throw new HttpError(503, "Worker ingest token is not configured.");
+  }
+
+  const header = request.headers.get("Authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
+
+  if (!token || token !== expectedToken) {
+    throw new HttpError(401, "Unauthorized ingest request.");
+  }
 }
 
 async function loadBasePlan(env: Env, extraNote?: string): Promise<PlanSnapshot> {
@@ -297,4 +413,11 @@ function toNumber(value: number | string, fallback: number): number {
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unknown error";
+}
+
+class HttpError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+    this.name = "HttpError";
+  }
 }

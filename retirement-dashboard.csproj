@@ -11,4 +11,11 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.8" PrivateAssets="all" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="IbGatewaySync\**\*.cs" />
+    <Content Remove="IbGatewaySync\**\*" />
+    <EmbeddedResource Remove="IbGatewaySync\**\*" />
+    <None Remove="IbGatewaySync\**\*" />
+  </ItemGroup>
+
 </Project>
