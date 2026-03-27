@@ -94,22 +94,27 @@ export default {
       return json({ ok: true, cacheEnabled: Boolean(env.PLAN_CACHE) }, env);
     }
 
-    if (url.pathname === "/api/refresh") {
-      const snapshot = await refreshPlan(env, true);
-      return json(snapshot, env);
-    }
-
-    if (url.pathname === "/api/plan") {
-      const cached = await env.PLAN_CACHE?.get<PlanSnapshot>(CACHE_KEY, "json");
-      if (cached) {
-        return json(cached, env);
+    try {
+      if (url.pathname === "/api/refresh") {
+        const snapshot = await refreshPlan(env, true);
+        return json(snapshot, env);
       }
 
-      const snapshot = await refreshPlan(env, true);
-      return json(snapshot, env);
-    }
+      if (url.pathname === "/api/plan") {
+        const cached = await env.PLAN_CACHE?.get<PlanSnapshot>(CACHE_KEY, "json");
+        if (cached) {
+          return json(cached, env);
+        }
 
-    return json({ error: "Not found" }, env, 404);
+        const snapshot = await refreshPlan(env, true);
+        return json(snapshot, env);
+      }
+
+      return json({ error: "Not found" }, env, 404);
+    } catch (error) {
+      const fallback = await loadBasePlan(env, `Worker fallback: ${toErrorMessage(error)}`);
+      return json(fallback, env, 200);
+    }
   },
 
   async scheduled(_event, env, ctx): Promise<void> {
@@ -118,10 +123,18 @@ export default {
 } satisfies ExportedHandler<Env>;
 
 async function refreshPlan(env: Env, persistCache: boolean): Promise<PlanSnapshot> {
-  const baseUrl = (env.PAGES_BASE_URL ?? "https://happylife2030.pages.dev").replace(/\/$/, "");
-  const basePlan = await fetchJson<PlanSnapshot>(`${baseUrl}/data/retirement-plan.json?ts=${Date.now()}`);
+  const basePlan = await loadBasePlan(env);
   const usdToTwdRate = Number.parseFloat(env.USD_TWD_RATE ?? `${basePlan.assumptions.usdToTwdRate || 32}`) || 32;
-  const quotes = await fetchYahooQuotes(Object.values(SYMBOLS));
+
+  let quotes = new Map<string, Quote>();
+  let liveNotes = "股價每 5 分鐘同步一次。若 Worker 暫時失敗，前端會自動回退到 Pages 上的靜態配置資料。";
+
+  try {
+    quotes = await fetchYahooQuotes(Object.values(SYMBOLS));
+  } catch (error) {
+    liveNotes = `報價來源暫時失敗，這次先沿用 Pages 基準資料。${toErrorMessage(error)}`;
+  }
+
   const refreshedAt = new Date().toISOString();
 
   const positions = basePlan.positions.map((position) => {
@@ -155,16 +168,16 @@ async function refreshPlan(env: Env, persistCache: boolean): Promise<PlanSnapsho
     positions,
     liveData: {
       isLive: true,
-      source: "Cloudflare Worker + Yahoo Finance quotes",
+      source: quotes.size > 0 ? "Cloudflare Worker + Yahoo Finance quotes" : "Cloudflare Worker fallback snapshot",
       lastUpdatedUtc: refreshedAt,
       refreshIntervalMinutes: 5,
-      notes: "股價每 5 分鐘同步一次。若 Worker 暫時失敗，前端會自動回退到 Pages 上的靜態配置資料。"
+      notes: liveNotes
     },
     history: [
       {
         date: refreshedAt,
         assetValueTwd: toMoney(assetValueTwd),
-        note: "Cloudflare Worker 已更新最新價格與可直接領現金的股利估算。"
+        note: quotes.size > 0 ? "Cloudflare Worker 已更新最新價格與可直接領現金的股利估算。" : "Cloudflare Worker 成功回傳基準資料，等待下一次報價刷新。"
       },
       ...basePlan.history.filter((point) => point.date !== refreshedAt).slice(0, 11)
     ]
@@ -177,6 +190,26 @@ async function refreshPlan(env: Env, persistCache: boolean): Promise<PlanSnapsho
   }
 
   return snapshot;
+}
+
+async function loadBasePlan(env: Env, extraNote?: string): Promise<PlanSnapshot> {
+  const baseUrl = (env.PAGES_BASE_URL ?? "https://happylife2030.pages.dev").replace(/\/$/, "");
+  const basePlan = await fetchJson<PlanSnapshot>(`${baseUrl}/data/retirement-plan.json?ts=${Date.now()}`);
+
+  if (extraNote) {
+    return {
+      ...basePlan,
+      liveData: {
+        isLive: true,
+        source: "Cloudflare Worker fallback snapshot",
+        lastUpdatedUtc: new Date().toISOString(),
+        refreshIntervalMinutes: 5,
+        notes: extraNote
+      }
+    };
+  }
+
+  return basePlan;
 }
 
 async function fetchYahooQuotes(symbols: string[]): Promise<Map<string, Quote>> {
@@ -232,4 +265,8 @@ function buildCorsHeaders(env: Env): Record<string, string> {
 
 function toMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Unknown error";
 }
