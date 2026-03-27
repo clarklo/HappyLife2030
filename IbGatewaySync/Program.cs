@@ -1,22 +1,23 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Xml.Linq;
 
 var options = await SyncOptions.LoadAsync(Path.Combine(AppContext.BaseDirectory, "appsettings.json"));
-var syncer = new IbGatewaySyncRunner(options);
+var syncer = new FlexStatementSyncRunner(options);
 var result = await syncer.RunAsync();
 
 Console.WriteLine(result);
 
 internal sealed record SyncOptions(
-    GatewayOptions IbGateway,
+    FlexWebServiceOptions FlexWebService,
     WorkerOptions Worker)
 {
     public static async Task<SyncOptions> LoadAsync(string configPath)
     {
         if (!File.Exists(configPath))
         {
-            throw new InvalidOperationException($"找不到設定檔：{configPath}");
+            throw new InvalidOperationException($"Missing config file: {configPath}");
         }
 
         var json = await File.ReadAllTextAsync(configPath, Encoding.UTF8);
@@ -29,32 +30,52 @@ internal sealed record SyncOptions(
 
         if (options is null)
         {
-            throw new InvalidOperationException("無法解析 appsettings.json。");
+            throw new InvalidOperationException("Unable to parse appsettings.json.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.FlexWebService.Token))
+        {
+            throw new InvalidOperationException("FlexWebService.Token is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.FlexWebService.QueryId))
+        {
+            throw new InvalidOperationException("FlexWebService.QueryId is required.");
         }
 
         if (string.IsNullOrWhiteSpace(options.Worker.IngestUrl))
         {
-            throw new InvalidOperationException("Worker.IngestUrl 尚未設定。");
+            throw new InvalidOperationException("Worker.IngestUrl is required.");
         }
 
         if (string.IsNullOrWhiteSpace(options.Worker.IngestToken))
         {
-            throw new InvalidOperationException("Worker.IngestToken 尚未設定。");
+            throw new InvalidOperationException("Worker.IngestToken is required.");
         }
 
         return options;
     }
 }
 
-internal sealed record GatewayOptions
+internal sealed record FlexWebServiceOptions
 {
-    public string BaseUrl { get; init; } = "https://localhost:5000/v1/api";
+    public string BaseUrl { get; init; } = "https://ndcdyn.interactivebrokers.com/AccountManagement/FlexWebService";
 
-    public string? AccountId { get; init; }
+    public string Token { get; init; } = string.Empty;
+
+    public string QueryId { get; init; } = string.Empty;
+
+    public int Version { get; init; } = 3;
 
     public string[] Symbols { get; init; } = ["TSM", "CSNDX", "CSPX", "VWRA"];
 
     public bool SyncQuantities { get; init; }
+
+    public int PollDelaySeconds { get; init; } = 5;
+
+    public int MaxPollAttempts { get; init; } = 12;
+
+    public string UserAgent { get; init; } = "HappyLife2030FlexSync/1.0";
 }
 
 internal sealed record WorkerOptions
@@ -64,32 +85,40 @@ internal sealed record WorkerOptions
     public string IngestToken { get; init; } = string.Empty;
 }
 
-internal sealed class IbGatewaySyncRunner(SyncOptions options)
+internal sealed class FlexStatementSyncRunner(SyncOptions options)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
+    private static readonly HashSet<string> PendingErrorCodes =
+    [
+        "1001",
+        "1003",
+        "1004",
+        "1005",
+        "1006",
+        "1007",
+        "1008",
+        "1009",
+        "1019",
+        "1021"
+    ];
 
     public async Task<string> RunAsync()
     {
-        using var gatewayClient = CreateGatewayClient(options.IbGateway.BaseUrl);
+        using var flexClient = CreateFlexClient(options.FlexWebService);
         using var workerClient = CreateWorkerClient();
 
-        await TickleAsync(gatewayClient);
-
-        var accountId = await ResolveAccountIdAsync(gatewayClient, options.IbGateway.AccountId);
-        var positions = await FetchPositionsAsync(gatewayClient, accountId, options.IbGateway.Symbols);
+        var referenceCode = await RequestStatementAsync(flexClient, options.FlexWebService);
+        var statementXml = await DownloadStatementAsync(flexClient, options.FlexWebService, referenceCode);
+        var positions = ParsePositions(statementXml, options.FlexWebService.Symbols);
 
         if (positions.Count == 0)
         {
-            throw new InvalidOperationException("IB Gateway 沒有回傳任何符合設定的持倉。");
+            throw new InvalidOperationException("Flex statement did not contain any matching symbols.");
         }
 
         var payload = new WorkerIngestPayload
         {
-            Source = "IBKR Client Portal Gateway",
-            Notes = $"本機同步工具已從帳號 {accountId} 更新持倉快照。",
+            Source = "IBKR Flex Web Service",
+            Notes = $"Snapshot updated from Flex Query {options.FlexWebService.QueryId}.",
             AsOfDate = DateTime.UtcNow,
             RefreshIntervalMinutes = 24 * 60,
             Positions = positions
@@ -98,7 +127,7 @@ internal sealed class IbGatewaySyncRunner(SyncOptions options)
                     Ticker = position.Ticker,
                     Name = position.Name,
                     Currency = position.Currency,
-                    Quantity = options.IbGateway.SyncQuantities ? position.Quantity : null,
+                    Quantity = options.FlexWebService.SyncQuantities ? position.Quantity : null,
                     PricePerShare = position.PricePerShare
                 })
                 .ToList()
@@ -114,33 +143,23 @@ internal sealed class IbGatewaySyncRunner(SyncOptions options)
         var responseBody = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException($"Worker ingest 失敗：{(int)response.StatusCode} {response.ReasonPhrase}{Environment.NewLine}{responseBody}");
+            throw new InvalidOperationException(
+                $"Worker ingest failed: {(int)response.StatusCode} {response.ReasonPhrase}{Environment.NewLine}{responseBody}");
         }
 
-        return $"同步完成：{accountId}，更新 {positions.Count} 檔標的。";
+        return $"Flex sync completed. Updated {positions.Count} symbols from query {options.FlexWebService.QueryId}.";
     }
 
-    private static HttpClient CreateGatewayClient(string baseUrl)
+    private static HttpClient CreateFlexClient(FlexWebServiceOptions options)
     {
-        var handler = new HttpClientHandler
+        var client = new HttpClient
         {
-            ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
-            {
-                if (message?.RequestUri?.Host is "localhost" or "127.0.0.1")
-                {
-                    return true;
-                }
-
-                return errors == System.Net.Security.SslPolicyErrors.None;
-            }
+            BaseAddress = new Uri(AppendTrailingSlash(options.BaseUrl))
         };
 
-        var client = new HttpClient(handler)
-        {
-            BaseAddress = new Uri(AppendTrailingSlash(baseUrl))
-        };
-
-        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(options.UserAgent);
+        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xml"));
+        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("text/xml"));
         return client;
     }
 
@@ -151,180 +170,190 @@ internal sealed class IbGatewaySyncRunner(SyncOptions options)
         return client;
     }
 
-    private static async Task TickleAsync(HttpClient client)
+    private static async Task<string> RequestStatementAsync(HttpClient client, FlexWebServiceOptions options)
     {
-        using var response = await client.PostAsync("tickle", new StringContent("{}", Encoding.UTF8, "application/json"));
+        var path = $"SendRequest?t={Uri.EscapeDataString(options.Token)}&q={Uri.EscapeDataString(options.QueryId)}&v={options.Version}";
+        using var response = await client.GetAsync(path);
+        var xml = await response.Content.ReadAsStringAsync();
+
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException($"IB Gateway tickle 失敗：{(int)response.StatusCode} {response.ReasonPhrase}");
+            throw new InvalidOperationException($"Flex SendRequest failed: {(int)response.StatusCode} {response.ReasonPhrase}{Environment.NewLine}{xml}");
         }
+
+        var document = XDocument.Parse(xml);
+        EnsureFlexSuccess(document, "SendRequest");
+
+        var referenceCode = document.Root?
+            .Elements()
+            .FirstOrDefault(static element => element.Name.LocalName == "ReferenceCode")?
+            .Value;
+
+        if (string.IsNullOrWhiteSpace(referenceCode))
+        {
+            throw new InvalidOperationException("Flex SendRequest succeeded but did not return a reference code.");
+        }
+
+        return referenceCode;
     }
 
-    private static async Task<string> ResolveAccountIdAsync(HttpClient client, string? configuredAccountId)
+    private static async Task<string> DownloadStatementAsync(HttpClient client, FlexWebServiceOptions options, string referenceCode)
     {
-        if (!string.IsNullOrWhiteSpace(configuredAccountId))
+        for (var attempt = 1; attempt <= options.MaxPollAttempts; attempt++)
         {
-            return configuredAccountId;
-        }
+            var path = $"GetStatement?t={Uri.EscapeDataString(options.Token)}&q={Uri.EscapeDataString(referenceCode)}&v={options.Version}";
+            using var response = await client.GetAsync(path);
+            var xml = await response.Content.ReadAsStringAsync();
 
-        using var response = await client.GetAsync("portfolio/accounts");
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new InvalidOperationException($"無法取得 IB 帳號清單：{(int)response.StatusCode} {response.ReasonPhrase}");
-        }
-
-        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        if (document.RootElement.ValueKind != JsonValueKind.Array)
-        {
-            throw new InvalidOperationException("IB 帳號清單格式不符合預期。");
-        }
-
-        foreach (var item in document.RootElement.EnumerateArray())
-        {
-            if (item.ValueKind == JsonValueKind.String)
+            if (!response.IsSuccessStatusCode)
             {
-                var value = item.GetString();
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    return value;
-                }
+                throw new InvalidOperationException($"Flex GetStatement failed: {(int)response.StatusCode} {response.ReasonPhrase}{Environment.NewLine}{xml}");
             }
 
-            if (item.ValueKind == JsonValueKind.Object)
+            var document = XDocument.Parse(xml);
+            if (LooksLikeFlexReport(document))
             {
-                var value = ReadString(item, "id")
-                    ?? ReadString(item, "accountId")
-                    ?? ReadString(item, "accountVan")
-                    ?? ReadString(item, "accountIdAlias");
-
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    return value;
-                }
+                return xml;
             }
+
+            var status = document.Root?
+                .Elements()
+                .FirstOrDefault(static element => element.Name.LocalName == "Status")?
+                .Value;
+            var errorCode = document.Root?
+                .Elements()
+                .FirstOrDefault(static element => element.Name.LocalName == "ErrorCode")?
+                .Value;
+            var errorMessage = document.Root?
+                .Elements()
+                .FirstOrDefault(static element => element.Name.LocalName == "ErrorMessage")?
+                .Value;
+
+            if (status == "Fail" && errorCode is not null && PendingErrorCodes.Contains(errorCode) && attempt < options.MaxPollAttempts)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(options.PollDelaySeconds));
+                continue;
+            }
+
+            EnsureFlexSuccess(document, "GetStatement");
+            throw new InvalidOperationException($"Flex statement did not contain a report payload. Error {errorCode}: {errorMessage}");
         }
 
-        throw new InvalidOperationException("找不到可用的 IB 帳號。");
+        throw new InvalidOperationException("Flex statement polling timed out before the report became available.");
     }
 
-    private static async Task<List<IbPositionSnapshot>> FetchPositionsAsync(HttpClient client, string accountId, IReadOnlyCollection<string> symbols)
+    private static List<FlexPositionSnapshot> ParsePositions(string xml, IReadOnlyCollection<string> symbols)
     {
-        using var response = await client.GetAsync($"portfolio2/{Uri.EscapeDataString(accountId)}/positions");
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new InvalidOperationException($"無法取得 IB 持倉：{(int)response.StatusCode} {response.ReasonPhrase}");
-        }
-
-        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        var root = document.RootElement;
-        var rows = root.ValueKind switch
-        {
-            JsonValueKind.Array => root.EnumerateArray().ToList(),
-            JsonValueKind.Object when root.TryGetProperty("positions", out var nested) && nested.ValueKind == JsonValueKind.Array => nested.EnumerateArray().ToList(),
-            _ => []
-        };
-
         var symbolSet = symbols
             .Where(static symbol => !string.IsNullOrWhiteSpace(symbol))
             .Select(static symbol => symbol.Trim().ToUpperInvariant())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var results = new List<IbPositionSnapshot>();
+        var document = XDocument.Parse(xml);
+        var results = new Dictionary<string, FlexPositionSnapshot>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var row in rows)
+        foreach (var element in document.Descendants())
         {
-            var ticker = NormalizeTicker(row);
+            var ticker = NormalizeSymbol(
+                ReadAttribute(element, "symbol")
+                ?? ReadAttribute(element, "underlyingSymbol")
+                ?? ReadAttribute(element, "assetSymbol"));
+
             if (string.IsNullOrWhiteSpace(ticker) || !symbolSet.Contains(ticker))
             {
                 continue;
             }
 
-            var marketPrice = ReadDecimal(row, "mktPrice")
-                ?? ReadDecimal(row, "marketPrice")
-                ?? ReadDecimal(row, "price");
+            var price = ReadDecimalAttribute(element, "markPrice")
+                ?? ReadDecimalAttribute(element, "price")
+                ?? ReadDecimalAttribute(element, "closePrice")
+                ?? ReadDecimalAttribute(element, "mtmPrice");
 
-            if (marketPrice is null || marketPrice <= 0)
+            if (price is null || price <= 0)
             {
                 continue;
             }
 
-            results.Add(new IbPositionSnapshot
+            var quantity = ReadDecimalAttribute(element, "position")
+                ?? ReadDecimalAttribute(element, "quantity")
+                ?? 0m;
+
+            results[ticker] = new FlexPositionSnapshot
             {
                 Ticker = ticker,
-                Name = ReadString(row, "description")
-                    ?? ReadString(row, "name")
+                Name = ReadAttribute(element, "description")
+                    ?? ReadAttribute(element, "description1")
                     ?? ticker,
-                Currency = ReadString(row, "currency") ?? "USD",
-                Quantity = ReadDecimal(row, "position")
-                    ?? ReadDecimal(row, "quantity")
-                    ?? 0m,
-                PricePerShare = marketPrice.Value
-            });
+                Currency = ReadAttribute(element, "currency") ?? "USD",
+                Quantity = quantity,
+                PricePerShare = price.Value
+            };
         }
 
-        return results;
+        return results.Values.ToList();
     }
 
-    private static string? NormalizeTicker(JsonElement row)
+    private static bool LooksLikeFlexReport(XDocument document)
     {
-        var candidates = new[]
+        return document.Root?.Name.LocalName is "FlexQueryResponse" or "FlexStatements";
+    }
+
+    private static void EnsureFlexSuccess(XDocument document, string operationName)
+    {
+        var status = document.Root?
+            .Elements()
+            .FirstOrDefault(static element => element.Name.LocalName == "Status")?
+            .Value;
+
+        if (string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase))
         {
-            ReadString(row, "ticker"),
-            ReadString(row, "symbol"),
-            ReadString(row, "contractDesc"),
-            ReadString(row, "contractDescLong"),
-            ReadString(row, "displayName")
-        };
-
-        foreach (var candidate in candidates)
-        {
-            if (string.IsNullOrWhiteSpace(candidate))
-            {
-                continue;
-            }
-
-            var token = candidate
-                .Split([' ', '.', ':', '/'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .FirstOrDefault();
-
-            if (!string.IsNullOrWhiteSpace(token))
-            {
-                return token.ToUpperInvariant();
-            }
+            return;
         }
 
-        return null;
+        var errorCode = document.Root?
+            .Elements()
+            .FirstOrDefault(static element => element.Name.LocalName == "ErrorCode")?
+            .Value;
+        var errorMessage = document.Root?
+            .Elements()
+            .FirstOrDefault(static element => element.Name.LocalName == "ErrorMessage")?
+            .Value;
+
+        throw new InvalidOperationException($"{operationName} failed. Error {errorCode}: {errorMessage}");
     }
 
-    private static string? ReadString(JsonElement element, string propertyName)
+    private static string? ReadAttribute(XElement element, string attributeName)
     {
-        return element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
-            ? property.GetString()
-            : null;
+        return element.Attributes().FirstOrDefault(attribute => attribute.Name.LocalName == attributeName)?.Value;
     }
 
-    private static decimal? ReadDecimal(JsonElement element, string propertyName)
+    private static decimal? ReadDecimalAttribute(XElement element, string attributeName)
     {
-        if (!element.TryGetProperty(propertyName, out var property))
+        var value = ReadAttribute(element, attributeName);
+        return decimal.TryParse(value, out var result) ? result : null;
+    }
+
+    private static string? NormalizeSymbol(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
         {
             return null;
         }
 
-        return property.ValueKind switch
-        {
-            JsonValueKind.Number when property.TryGetDecimal(out var number) => number,
-            JsonValueKind.String when decimal.TryParse(property.GetString(), out var textNumber) => textNumber,
-            _ => null
-        };
+        var token = value
+            .Split([' ', '.', ':', '/'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault();
+
+        return string.IsNullOrWhiteSpace(token) ? null : token.ToUpperInvariant();
     }
 
     private static string AppendTrailingSlash(string value)
     {
-        return value.EndsWith("/") ? value : $"{value}/";
+        return value.EndsWith('/') ? value : $"{value}/";
     }
 }
 
-internal sealed record IbPositionSnapshot
+internal sealed record FlexPositionSnapshot
 {
     public string Ticker { get; init; } = string.Empty;
 
@@ -339,7 +368,7 @@ internal sealed record IbPositionSnapshot
 
 internal sealed record WorkerIngestPayload
 {
-    public string Source { get; init; } = "IBKR Client Portal Gateway";
+    public string Source { get; init; } = "IBKR Flex Web Service";
 
     public string Notes { get; init; } = string.Empty;
 

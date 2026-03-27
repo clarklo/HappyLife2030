@@ -1,6 +1,6 @@
-# IB Gateway Sync
+# IB Flex Sync
 
-This local `.NET` tool connects to the IBKR Client Portal Gateway running on your own machine, reads your portfolio positions, and pushes a snapshot update to the Cloudflare Worker ingest API.
+This local `.NET` tool reads a saved IBKR Flex Query by using your Flex Web Service token and query id, then pushes a snapshot update to the Cloudflare Worker ingest API.
 
 ## What it updates
 
@@ -10,17 +10,23 @@ This local `.NET` tool connects to the IBKR Client Portal Gateway running on you
 
 ## Setup
 
-1. Start and log in to IBKR Client Portal Gateway on this machine.
-2. Copy `appsettings.example.json` to `appsettings.json`.
-3. Fill in:
+1. Copy `appsettings.example.json` to `appsettings.json`.
+2. Fill in:
+   - `FlexWebService.Token`
+   - `FlexWebService.QueryId`
    - `Worker.IngestUrl`
    - `Worker.IngestToken`
-   - `IbGateway.AccountId` if you want to force a specific account
-4. Run:
+3. Run:
 
 ```powershell
 dotnet run --project .\IbGatewaySync\IbGatewaySync.csproj
 ```
+
+## Notes
+
+- This mode does not require Client Portal Gateway to be running.
+- The Flex Query should include position rows with symbol and mark price fields.
+- Flex report data is best for daily snapshots, not intraday real-time pricing.
 
 ## Scheduling
 
