@@ -183,6 +183,7 @@ async function refreshPlan(env: Env, forceRefreshAllSymbols: boolean): Promise<P
   const apiKey = env.TWELVE_DATA_API_KEY?.trim();
 
   let quotes = new Map<string, TwelveDataQuote>();
+  let quoteErrors: string[] = [];
   let liveNotes = "股價每 5 分鐘同步一次。若報價來源暫時失敗，前端會自動回退到上一次快取或 Pages 的基準資料。";
 
   if (apiKey) {
@@ -192,7 +193,9 @@ async function refreshPlan(env: Env, forceRefreshAllSymbols: boolean): Promise<P
 
     if (tickersToRefresh.length > 0) {
       try {
-        quotes = await fetchTwelveDataQuotes(tickersToRefresh, apiKey);
+        const quoteResult = await fetchTwelveDataQuotes(tickersToRefresh, apiKey);
+        quotes = quoteResult.quotes;
+        quoteErrors = quoteResult.errors;
       } catch (error) {
         liveNotes = `Twelve Data 暫時失敗，這次先沿用上一次快取或 Pages 基準資料。${toErrorMessage(error)}`;
       }
@@ -204,6 +207,10 @@ async function refreshPlan(env: Env, forceRefreshAllSymbols: boolean): Promise<P
   }
 
   const refreshedAt = new Date().toISOString();
+
+  if (quoteErrors.length > 0) {
+    liveNotes = `${liveNotes} 無法更新的標的：${quoteErrors.join("；")}。`;
+  }
 
   const positions = basePlan.positions.map((position) => {
     const quote = quotes.get(position.ticker);
@@ -279,8 +286,12 @@ async function loadBasePlan(env: Env, extraNote?: string): Promise<PlanSnapshot>
   };
 }
 
-async function fetchTwelveDataQuotes(tickers: string[], apiKey: string): Promise<Map<string, TwelveDataQuote>> {
+async function fetchTwelveDataQuotes(
+  tickers: string[],
+  apiKey: string
+): Promise<{ quotes: Map<string, TwelveDataQuote>; errors: string[] }> {
   const quotes = new Map<string, TwelveDataQuote>();
+  const errors: string[] = [];
 
   for (const ticker of tickers) {
     const instrument = INSTRUMENTS[ticker];
@@ -289,24 +300,33 @@ async function fetchTwelveDataQuotes(tickers: string[], apiKey: string): Promise
     endpoint.searchParams.set("exchange", instrument.exchange);
     endpoint.searchParams.set("apikey", apiKey);
 
-    const quote = await fetchJson<TwelveDataQuote>(endpoint.toString());
-    if (quote.code || quote.status === "error") {
-      throw new Error(`${ticker}: ${quote.message ?? "Twelve Data quote failed"}`);
+    try {
+      const quote = await fetchJson<TwelveDataQuote>(endpoint.toString());
+      if (quote.code || quote.status === "error") {
+        errors.push(`${ticker}: ${quote.message ?? "Twelve Data quote failed"}`);
+        continue;
+      }
+
+      quotes.set(ticker, quote);
+    } catch (error) {
+      errors.push(`${ticker}: ${toErrorMessage(error)}`);
     }
-
-    quotes.set(ticker, quote);
   }
 
-  if (tickers.includes("CSNDX")) {
-    const eurUsdRate = await fetchEurUsdRate(apiKey);
-    quotes.set("EURUSD", {
-      symbol: "EUR/USD",
-      close: eurUsdRate.toString(),
-      currency: "USD"
-    });
+  if (quotes.has("CSNDX")) {
+    try {
+      const eurUsdRate = await fetchEurUsdRate(apiKey);
+      quotes.set("EURUSD", {
+        symbol: "EUR/USD",
+        close: eurUsdRate.toString(),
+        currency: "USD"
+      });
+    } catch (error) {
+      errors.push(`EUR/USD: ${toErrorMessage(error)}`);
+    }
   }
 
-  return quotes;
+  return { quotes, errors };
 }
 
 async function fetchEurUsdRate(apiKey: string): Promise<number> {
