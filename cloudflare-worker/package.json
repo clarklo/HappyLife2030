@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "happylife2030-live-plan-worker",
   "private": true,
   "type": "module",
@@ -7,6 +7,7 @@
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260317.1",
     "typescript": "^5.8.3",
     "wrangler": "^4.8.0"
   }

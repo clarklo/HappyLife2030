@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using retirement_dashboard.Models;
 
 namespace retirement_dashboard.Services;
@@ -171,7 +171,7 @@ public sealed class PlanDataService(HttpClient httpClient)
             DataSourceText = string.IsNullOrWhiteSpace(snapshot.LiveData.Source) ? "手動配置資料" : snapshot.LiveData.Source,
             LastUpdatedText = lastUpdatedText,
             RefreshIntervalMinutes = snapshot.LiveData.RefreshIntervalMinutes,
-            RefreshIntervalText = $"每 {snapshot.LiveData.RefreshIntervalMinutes} 分鐘更新一次",
+            RefreshIntervalText = FormatRefreshInterval(snapshot.LiveData.RefreshIntervalMinutes),
             LiveNotes = snapshot.LiveData.Notes,
             CurrentAssetTwd = currentAssetTwd,
             CurrentInvestedTwd = currentInvestedTwd,
@@ -241,6 +241,17 @@ public sealed class PlanDataService(HttpClient httpClient)
     private static decimal ConvertToTwd(decimal amount, string currency, decimal usdToTwdRate)
     {
         return currency == "USD" ? amount * usdToTwdRate : amount;
+    }
+
+    private static string FormatRefreshInterval(int refreshIntervalMinutes)
+    {
+        if (refreshIntervalMinutes > 0 && refreshIntervalMinutes % 60 == 0)
+        {
+            var hours = refreshIntervalMinutes / 60;
+            return $"每 {hours} 小時更新一次";
+        }
+
+        return $"每 {refreshIntervalMinutes} 分鐘更新一次";
     }
 
     private sealed class RuntimeConfig

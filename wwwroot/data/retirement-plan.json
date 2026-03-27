@@ -18,8 +18,8 @@
     "isLive": false,
     "source": "手動配置資料",
     "lastUpdatedUtc": null,
-    "refreshIntervalMinutes": 5,
-    "notes": "Cloudflare Worker 連接完成後，首頁會自動切換成每 5 分鐘更新的即時資料。"
+    "refreshIntervalMinutes": 120,
+    "notes": "Cloudflare Worker 連接完成後，首頁會自動切換成每 2 小時更新的即時資料。"
   },
   "assumptions": {
     "assumedAnnualYieldRate": 0.04,

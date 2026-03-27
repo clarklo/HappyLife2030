@@ -3,7 +3,7 @@ export interface Env {
   PAGES_BASE_URL?: string;
   CORS_ORIGIN?: string;
   USD_TWD_RATE?: string;
-  TWELVE_DATA_API_KEY?: string;
+  LEEWAY_API_TOKEN?: string;
 }
 
 type PlanSnapshot = {
@@ -54,76 +54,31 @@ type PlanSnapshot = {
   }>;
 };
 
-type TwelveDataQuote = {
-  symbol?: string;
-  close?: string;
-  previous_close?: string;
-  currency?: string;
-  is_market_open?: boolean;
-  code?: number;
-  status?: string;
+type LeewayQuote = {
+  code?: string;
+  timestamp?: number;
+  close?: number | string;
+  previousClose?: number | string;
+  change?: number | string;
+  change_p?: number | string;
   message?: string;
-};
-
-type CurrencyConversionResponse = {
-  rate?: string | number;
-  code?: number;
-  status?: string;
-  message?: string;
+  error?: string;
 };
 
 type InstrumentConfig = {
-  symbol: string;
-  exchange: string;
-  marketTimeZone: string;
-  marketOpenHour: number;
-  marketOpenMinute: number;
-  marketCloseHour: number;
-  marketCloseMinute: number;
+  code: string;
 };
 
-const CACHE_KEY = "retirement-plan-live-v2";
-const CACHE_TTL_SECONDS = 300;
-const TWELVE_DATA_QUOTE_URL = "https://api.twelvedata.com/quote";
-const TWELVE_DATA_CURRENCY_CONVERSION_URL = "https://api.twelvedata.com/currency_conversion";
+const CACHE_KEY = "retirement-plan-live-v3";
+const CACHE_TTL_SECONDS = 60 * 60 * 2;
+const REFRESH_INTERVAL_MINUTES = 120;
+const LEEWAY_LIVE_BASE_URL = "https://api.leeway.tech/api/v1/public/live";
 
 const INSTRUMENTS: Record<string, InstrumentConfig> = {
-  TSM: {
-    symbol: "TSM",
-    exchange: "NYSE",
-    marketTimeZone: "America/New_York",
-    marketOpenHour: 9,
-    marketOpenMinute: 30,
-    marketCloseHour: 16,
-    marketCloseMinute: 0
-  },
-  CSNDX: {
-    symbol: "CSNDX",
-    exchange: "MTA",
-    marketTimeZone: "Europe/Rome",
-    marketOpenHour: 9,
-    marketOpenMinute: 0,
-    marketCloseHour: 17,
-    marketCloseMinute: 30
-  },
-  CSPX: {
-    symbol: "CSPX",
-    exchange: "LSE",
-    marketTimeZone: "Europe/London",
-    marketOpenHour: 8,
-    marketOpenMinute: 0,
-    marketCloseHour: 16,
-    marketCloseMinute: 30
-  },
-  VWRA: {
-    symbol: "VWRA",
-    exchange: "LSE",
-    marketTimeZone: "Europe/London",
-    marketOpenHour: 8,
-    marketOpenMinute: 0,
-    marketCloseHour: 16,
-    marketCloseMinute: 30
-  }
+  TSM: { code: "TSM.NYSE" },
+  CSNDX: { code: "CSNDX.SW" },
+  CSPX: { code: "CSPX.LSE" },
+  VWRA: { code: "VWRA.LSE" }
 };
 
 export default {
@@ -141,8 +96,8 @@ export default {
         {
           ok: true,
           cacheEnabled: Boolean(env.PLAN_CACHE),
-          quoteProvider: "twelve-data",
-          apiKeyConfigured: Boolean(env.TWELVE_DATA_API_KEY)
+          quoteProvider: "leeway",
+          apiKeyConfigured: Boolean(env.LEEWAY_API_TOKEN)
         },
         env
       );
@@ -150,7 +105,7 @@ export default {
 
     try {
       if (url.pathname === "/api/refresh") {
-        const snapshot = await refreshPlan(env, true);
+        const snapshot = await refreshPlan(env);
         return json(snapshot, env);
       }
 
@@ -160,7 +115,7 @@ export default {
           return json(cached, env);
         }
 
-        const snapshot = await refreshPlan(env, true);
+        const snapshot = await refreshPlan(env);
         return json(snapshot, env);
       }
 
@@ -172,62 +127,46 @@ export default {
   },
 
   async scheduled(_event, env, ctx): Promise<void> {
-    ctx.waitUntil(refreshPlan(env, false));
+    ctx.waitUntil(refreshPlan(env));
   }
 } satisfies ExportedHandler<Env>;
 
-async function refreshPlan(env: Env, forceRefreshAllSymbols: boolean): Promise<PlanSnapshot> {
+async function refreshPlan(env: Env): Promise<PlanSnapshot> {
   const basePlan = await loadBasePlan(env);
-  const cachedPlan = await env.PLAN_CACHE?.get<PlanSnapshot>(CACHE_KEY, "json");
-  const usdToTwdRate = Number.parseFloat(env.USD_TWD_RATE ?? `${basePlan.assumptions.usdToTwdRate || 32}`) || 32;
-  const apiKey = env.TWELVE_DATA_API_KEY?.trim();
+  const apiToken = env.LEEWAY_API_TOKEN?.trim();
 
-  let quotes = new Map<string, TwelveDataQuote>();
+  let quotes = new Map<string, LeewayQuote>();
   let quoteErrors: string[] = [];
-  let liveNotes = "股價每 5 分鐘同步一次。若報價來源暫時失敗，前端會自動回退到上一次快取或 Pages 的基準資料。";
+  let liveNotes = "Prices sync every 2 hours. If quote fetch fails, the dashboard falls back to the Pages baseline snapshot.";
 
-  if (apiKey) {
-    const tickersToRefresh = forceRefreshAllSymbols
-      ? Object.keys(INSTRUMENTS)
-      : Object.keys(INSTRUMENTS).filter((ticker) => isMarketOpen(INSTRUMENTS[ticker], new Date()));
-
-    if (tickersToRefresh.length > 0) {
-      try {
-        const quoteResult = await fetchTwelveDataQuotes(tickersToRefresh, apiKey);
-        quotes = quoteResult.quotes;
-        quoteErrors = quoteResult.errors;
-      } catch (error) {
-        liveNotes = `Twelve Data 暫時失敗，這次先沿用上一次快取或 Pages 基準資料。${toErrorMessage(error)}`;
-      }
-    } else {
-      liveNotes = "目前不在交易時段內，這次沿用最近一次的快取價格以節省免費 API 額度。";
-    }
+  if (apiToken) {
+    const quoteResult = await fetchLeewayQuotes(apiToken);
+    quotes = quoteResult.quotes;
+    quoteErrors = quoteResult.errors;
   } else {
-    liveNotes = "尚未設定 Twelve Data API key，這次先沿用快取或 Pages 基準資料。";
+    liveNotes = "Leeway API token is missing, so the dashboard is currently using the Pages baseline snapshot.";
+  }
+
+  if (quoteErrors.length > 0) {
+    liveNotes = `${liveNotes} Partial quote failures: ${quoteErrors.join("; ")}.`;
   }
 
   const refreshedAt = new Date().toISOString();
 
-  if (quoteErrors.length > 0) {
-    liveNotes = `${liveNotes} 無法更新的標的：${quoteErrors.join("；")}。`;
-  }
-
   const positions = basePlan.positions.map((position) => {
     const quote = quotes.get(position.ticker);
-    const cachedPosition = cachedPlan?.positions.find((cached) => cached.ticker === position.ticker);
-    const latestPrice = quote?.close
-      ? convertQuotePriceToUsd(quote.close, quote.currency, position.pricePerShare, quotes)
+    const latestPrice = quote?.close !== undefined
+      ? toNumber(quote.close, position.pricePerShare)
       : position.pricePerShare;
 
     return {
       ...position,
-      pricePerShare: toMoney(latestPrice),
-      annualDividendPerShare: toMoney(cachedPosition?.annualDividendPerShare ?? position.annualDividendPerShare)
+      pricePerShare: toMoney(latestPrice)
     };
   });
 
   const investedTwd = positions.reduce((sum, position) => {
-    const fx = position.currency === "USD" ? usdToTwdRate : 1;
+    const fx = position.currency === "USD" ? basePlan.assumptions.usdToTwdRate : 1;
     return sum + (position.quantity * position.pricePerShare * fx);
   }, 0);
   const assetValueTwd = investedTwd + basePlan.fixedDeposit.principalTwd + basePlan.currentCashTwd;
@@ -235,23 +174,21 @@ async function refreshPlan(env: Env, forceRefreshAllSymbols: boolean): Promise<P
   const snapshot: PlanSnapshot = {
     ...basePlan,
     asOfDate: refreshedAt,
-    assumptions: {
-      ...basePlan.assumptions,
-      usdToTwdRate
-    },
     positions,
     liveData: {
       isLive: true,
-      source: quotes.size > 0 ? "Cloudflare Worker + Twelve Data quotes" : "Cloudflare Worker fallback snapshot",
+      source: quotes.size > 0 ? "Cloudflare Worker + Leeway quotes" : "Cloudflare Worker fallback snapshot",
       lastUpdatedUtc: refreshedAt,
-      refreshIntervalMinutes: 5,
+      refreshIntervalMinutes: REFRESH_INTERVAL_MINUTES,
       notes: liveNotes
     },
     history: [
       {
         date: refreshedAt,
         assetValueTwd: toMoney(assetValueTwd),
-        note: quotes.size > 0 ? "Cloudflare Worker 已用 Twelve Data 更新最新價格。" : "Cloudflare Worker 沿用最近一次可用價格或基準資料。"
+        note: quotes.size > 0
+          ? "Cloudflare Worker refreshed the latest asset values with Leeway quotes."
+          : "Cloudflare Worker could not refresh quotes and kept the Pages baseline snapshot."
       },
       ...basePlan.history.filter((point) => point.date !== refreshedAt).slice(0, 11)
     ]
@@ -280,30 +217,28 @@ async function loadBasePlan(env: Env, extraNote?: string): Promise<PlanSnapshot>
       isLive: true,
       source: "Cloudflare Worker fallback snapshot",
       lastUpdatedUtc: new Date().toISOString(),
-      refreshIntervalMinutes: 5,
+      refreshIntervalMinutes: REFRESH_INTERVAL_MINUTES,
       notes: extraNote
     }
   };
 }
 
-async function fetchTwelveDataQuotes(
-  tickers: string[],
-  apiKey: string
-): Promise<{ quotes: Map<string, TwelveDataQuote>; errors: string[] }> {
-  const quotes = new Map<string, TwelveDataQuote>();
+async function fetchLeewayQuotes(apiToken: string): Promise<{ quotes: Map<string, LeewayQuote>; errors: string[] }> {
+  const quotes = new Map<string, LeewayQuote>();
   const errors: string[] = [];
 
-  for (const ticker of tickers) {
-    const instrument = INSTRUMENTS[ticker];
-    const endpoint = new URL(TWELVE_DATA_QUOTE_URL);
-    endpoint.searchParams.set("symbol", instrument.symbol);
-    endpoint.searchParams.set("exchange", instrument.exchange);
-    endpoint.searchParams.set("apikey", apiKey);
+  for (const [ticker, instrument] of Object.entries(INSTRUMENTS)) {
+    const endpoint = `${LEEWAY_LIVE_BASE_URL}/${instrument.code}?apitoken=${encodeURIComponent(apiToken)}`;
 
     try {
-      const quote = await fetchJson<TwelveDataQuote>(endpoint.toString());
-      if (quote.code || quote.status === "error") {
-        errors.push(`${ticker}: ${quote.message ?? "Twelve Data quote failed"}`);
+      const quote = await fetchJson<LeewayQuote>(endpoint);
+      if (quote.error || quote.message) {
+        errors.push(`${ticker}: ${quote.error ?? quote.message}`);
+        continue;
+      }
+
+      if (quote.close === undefined) {
+        errors.push(`${ticker}: missing close price`);
         continue;
       }
 
@@ -313,39 +248,7 @@ async function fetchTwelveDataQuotes(
     }
   }
 
-  if (quotes.has("CSNDX")) {
-    try {
-      const eurUsdRate = await fetchEurUsdRate(apiKey);
-      quotes.set("EURUSD", {
-        symbol: "EUR/USD",
-        close: eurUsdRate.toString(),
-        currency: "USD"
-      });
-    } catch (error) {
-      errors.push(`EUR/USD: ${toErrorMessage(error)}`);
-    }
-  }
-
   return { quotes, errors };
-}
-
-async function fetchEurUsdRate(apiKey: string): Promise<number> {
-  const endpoint = new URL(TWELVE_DATA_CURRENCY_CONVERSION_URL);
-  endpoint.searchParams.set("symbol", "EUR/USD");
-  endpoint.searchParams.set("amount", "1");
-  endpoint.searchParams.set("apikey", apiKey);
-
-  const payload = await fetchJson<CurrencyConversionResponse>(endpoint.toString());
-  if (payload.code || payload.status === "error") {
-    throw new Error(payload.message ?? "EUR/USD conversion failed");
-  }
-
-  const rate = Number(payload.rate);
-  if (!Number.isFinite(rate) || rate <= 0) {
-    throw new Error("無法取得 EUR/USD 匯率");
-  }
-
-  return rate;
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -383,53 +286,13 @@ function buildCorsHeaders(env: Env): Record<string, string> {
   };
 }
 
-function convertQuotePriceToUsd(rawPrice: string, currency: string | undefined, fallbackPrice: number, quotes: Map<string, TwelveDataQuote>): number {
-  const numericPrice = Number(rawPrice);
-  if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
-    return fallbackPrice;
-  }
-
-  if (!currency || currency === "USD") {
-    return numericPrice;
-  }
-
-  if (currency === "EUR") {
-    const eurUsd = Number(quotes.get("EURUSD")?.close);
-    if (Number.isFinite(eurUsd) && eurUsd > 0) {
-      return numericPrice * eurUsd;
-    }
-  }
-
-  return fallbackPrice;
-}
-
-function isMarketOpen(instrument: InstrumentConfig, now: Date): boolean {
-  const formatter = new Intl.DateTimeFormat("en-GB", {
-    timeZone: instrument.marketTimeZone,
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  });
-
-  const parts = formatter.formatToParts(now);
-  const weekday = parts.find((part) => part.type === "weekday")?.value;
-  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? "0");
-  const minute = Number(parts.find((part) => part.type === "minute")?.value ?? "0");
-
-  if (weekday === "Sat" || weekday === "Sun") {
-    return false;
-  }
-
-  const currentMinutes = (hour * 60) + minute;
-  const openMinutes = (instrument.marketOpenHour * 60) + instrument.marketOpenMinute;
-  const closeMinutes = (instrument.marketCloseHour * 60) + instrument.marketCloseMinute;
-
-  return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
-}
-
 function toMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function toNumber(value: number | string, fallback: number): number {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : fallback;
 }
 
 function toErrorMessage(error: unknown): string {

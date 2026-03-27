@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @implements IAsyncDisposable
 @inject retirement_dashboard.Services.PlanDataService PlanDataService
 
@@ -231,12 +231,12 @@ else if (_dashboard is not null)
             <div class="panel-heading">
                 <div>
                     <p class="eyebrow">更新流程</p>
-                    <h2>Cloudflare 每 5 分鐘同步</h2>
+                    <h2>Cloudflare 每 2 小時同步</h2>
                 </div>
             </div>
             <ol class="step-list">
                 <li>Pages 繼續提供靜態網站，保留你的基準配置與手動備援資料。</li>
-                <li>Worker 每 5 分鐘抓一次最新價格，更新可直接領現金的股利估算，再寫回快取。</li>
+                <li>Worker 每 2 小時抓一次最新價格，更新可直接領現金的股利估算，再寫回快取。</li>
                 <li>首頁優先讀 Worker API；如果即時來源暫時失敗，就自動退回本地 JSON，不會整站空白。</li>
             </ol>
             <p class="panel-note">@_dashboard.Notes</p>
@@ -279,7 +279,7 @@ else if (_dashboard is not null)
     private void StartRefreshLoop()
     {
         _refreshCancellation = new CancellationTokenSource();
-        _refreshTimer = new PeriodicTimer(TimeSpan.FromMinutes(5));
+        _refreshTimer = new PeriodicTimer(TimeSpan.FromMinutes(_dashboard?.RefreshIntervalMinutes ?? 120));
         _refreshLoopTask = RunRefreshLoopAsync(_refreshCancellation.Token);
     }
 
