@@ -216,8 +216,8 @@ async function refreshPlan(env: Env, forceRefreshAllSymbols: boolean): Promise<P
     const quote = quotes.get(position.ticker);
     const cachedPosition = cachedPlan?.positions.find((cached) => cached.ticker === position.ticker);
     const latestPrice = quote?.close
-      ? convertQuotePriceToUsd(quote.close, quote.currency, cachedPosition?.pricePerShare ?? position.pricePerShare, quotes)
-      : (cachedPosition?.pricePerShare ?? position.pricePerShare);
+      ? convertQuotePriceToUsd(quote.close, quote.currency, position.pricePerShare, quotes)
+      : position.pricePerShare;
 
     return {
       ...position,
