@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Xml.Linq;
 
 var options = await SyncOptions.LoadAsync(Path.Combine(AppContext.BaseDirectory, "appsettings.json"));
@@ -368,26 +369,36 @@ internal sealed record FlexPositionSnapshot
 
 internal sealed record WorkerIngestPayload
 {
+    [JsonPropertyName("source")]
     public string Source { get; init; } = "IBKR Flex Web Service";
 
+    [JsonPropertyName("notes")]
     public string Notes { get; init; } = string.Empty;
 
+    [JsonPropertyName("asOfDate")]
     public DateTime AsOfDate { get; init; }
 
+    [JsonPropertyName("refreshIntervalMinutes")]
     public int RefreshIntervalMinutes { get; init; }
 
+    [JsonPropertyName("positions")]
     public List<WorkerPositionUpdate> Positions { get; init; } = [];
 }
 
 internal sealed record WorkerPositionUpdate
 {
+    [JsonPropertyName("ticker")]
     public string Ticker { get; init; } = string.Empty;
 
+    [JsonPropertyName("name")]
     public string? Name { get; init; }
 
+    [JsonPropertyName("currency")]
     public string? Currency { get; init; }
 
+    [JsonPropertyName("quantity")]
     public decimal? Quantity { get; init; }
 
+    [JsonPropertyName("pricePerShare")]
     public decimal? PricePerShare { get; init; }
 }
