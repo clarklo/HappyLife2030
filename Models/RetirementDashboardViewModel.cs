@@ -22,6 +22,14 @@ public sealed class RetirementDashboardViewModel
 
     public string LiveNotes { get; init; } = string.Empty;
 
+    public decimal ActualHoldingsValueTwd { get; init; }
+
+    public string ActualHoldingsValueText { get; init; } = string.Empty;
+
+    public int ActualHoldingsCount { get; init; }
+
+    public string ActualHoldingsSourceText { get; init; } = string.Empty;
+
     public decimal CurrentAssetTwd { get; init; }
 
     public decimal CurrentInvestedTwd { get; init; }
@@ -100,9 +108,22 @@ public sealed class RetirementDashboardViewModel
 
     public string Notes { get; init; } = string.Empty;
 
+    public IReadOnlyList<ActualHoldingViewModel> ActualHoldings { get; init; } = [];
+
     public IReadOnlyList<PositionViewModel> Positions { get; init; } = [];
 
     public IReadOnlyList<HistoryPointViewModel> History { get; init; } = [];
+}
+
+public sealed class ActualHoldingViewModel
+{
+    public string Ticker { get; init; } = string.Empty;
+
+    public string Name { get; init; } = string.Empty;
+
+    public string MarketValueText { get; init; } = string.Empty;
+
+    public string DetailText { get; init; } = string.Empty;
 }
 
 public sealed class PositionViewModel
