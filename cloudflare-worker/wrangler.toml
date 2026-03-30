@@ -11,7 +11,7 @@ PAGES_BASE_URL = "https://happylife2030.pages.dev"
 CORS_ORIGIN = "https://happylife2030.pages.dev"
 USD_TWD_RATE = "32"
 
-# Add Worker secrets named IB_FLEX_TOKEN, IB_FLEX_QUERY_ID, TWELVE_DATA_API_KEY, and WORKER_INGEST_TOKEN in the Cloudflare dashboard.
+# Add Worker secrets named TWELVE_DATA_API_KEY and WORKER_INGEST_TOKEN in the Cloudflare dashboard.
 [[kv_namespaces]]
 binding = "PLAN_CACHE"
 id = "ee82c3d646eb4eca9ef7c81ca0e18c5e"
