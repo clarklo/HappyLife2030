@@ -3,7 +3,7 @@ export interface Env {
   PAGES_BASE_URL?: string;
   CORS_ORIGIN?: string;
   USD_TWD_RATE?: string;
-  LEEWAY_API_TOKEN?: string;
+  TWELVE_DATA_API_KEY?: string;
   WORKER_INGEST_TOKEN?: string;
 }
 
@@ -55,19 +55,12 @@ type PlanSnapshot = {
   }>;
 };
 
-type LeewayQuote = {
-  code?: string;
-  timestamp?: number;
-  close?: number | string;
-  previousClose?: number | string;
-  change?: number | string;
-  change_p?: number | string;
+type TwelveDataPrice = {
+  price?: string;
+  symbol?: string;
+  status?: string;
+  code?: number | string;
   message?: string;
-  error?: string;
-};
-
-type InstrumentConfig = {
-  code: string;
 };
 
 type IngestPositionUpdate = {
@@ -89,16 +82,9 @@ type IngestRequest = {
 };
 
 const CACHE_KEY = "retirement-plan-live-v3";
-const CACHE_TTL_SECONDS = 60 * 60 * 2;
-const REFRESH_INTERVAL_MINUTES = 120;
-const LEEWAY_LIVE_BASE_URL = "https://api.leeway.tech/api/v1/public/live";
-
-const INSTRUMENTS: Record<string, InstrumentConfig> = {
-  TSM: { code: "TSM.NYSE" },
-  CSNDX: { code: "CSNDX.SW" },
-  CSPX: { code: "CSPX.LSE" },
-  VWRA: { code: "VWRA.LSE" }
-};
+const CACHE_TTL_SECONDS = 60 * 60 * 24 * 7;
+const REFRESH_INTERVAL_MINUTES = 24 * 60;
+const TWELVE_DATA_PRICE_URL = "https://api.twelvedata.com/price";
 
 export default {
   async fetch(request, env): Promise<Response> {
@@ -115,8 +101,8 @@ export default {
         {
           ok: true,
           cacheEnabled: Boolean(env.PLAN_CACHE),
-          quoteProvider: "leeway",
-          apiKeyConfigured: Boolean(env.LEEWAY_API_TOKEN),
+          quoteProvider: "twelve-data-tsm",
+          apiKeyConfigured: Boolean(env.TWELVE_DATA_API_KEY),
           ingestConfigured: Boolean(env.WORKER_INGEST_TOKEN)
         },
         env
@@ -163,19 +149,20 @@ export default {
 } satisfies ExportedHandler<Env>;
 
 async function refreshPlan(env: Env): Promise<PlanSnapshot> {
-  const basePlan = await loadBasePlan(env);
-  const apiToken = env.LEEWAY_API_TOKEN?.trim();
+  const basePlan = await loadCurrentSnapshot(env);
+  const apiKey = env.TWELVE_DATA_API_KEY?.trim();
+  const quoteErrors: string[] = [];
+  let liveNotes = "IB Flex snapshot refreshes daily from your local sync. Worker only tops up TSM with Twelve Data.";
+  let tsmPrice: number | null = null;
 
-  let quotes = new Map<string, LeewayQuote>();
-  let quoteErrors: string[] = [];
-  let liveNotes = "Prices sync every 2 hours. If quote fetch fails, the dashboard falls back to the Pages baseline snapshot.";
-
-  if (apiToken) {
-    const quoteResult = await fetchLeewayQuotes(apiToken);
-    quotes = quoteResult.quotes;
-    quoteErrors = quoteResult.errors;
+  if (apiKey) {
+    try {
+      tsmPrice = await fetchTsmPrice(apiKey);
+    } catch (error) {
+      quoteErrors.push(`TSM: ${toErrorMessage(error)}`);
+    }
   } else {
-    liveNotes = "Leeway API token is missing, so the dashboard is currently using the Pages baseline snapshot.";
+    liveNotes = "TWELVE_DATA_API_KEY is missing, so the Worker keeps the latest IB Flex snapshot unchanged.";
   }
 
   if (quoteErrors.length > 0) {
@@ -185,14 +172,11 @@ async function refreshPlan(env: Env): Promise<PlanSnapshot> {
   const refreshedAt = new Date().toISOString();
 
   const positions = basePlan.positions.map((position) => {
-    const quote = quotes.get(position.ticker);
-    const latestPrice = quote?.close !== undefined
-      ? toNumber(quote.close, position.pricePerShare)
-      : position.pricePerShare;
-
     return {
       ...position,
-      pricePerShare: toMoney(latestPrice)
+      pricePerShare: position.ticker === "TSM" && tsmPrice !== null
+        ? toMoney(tsmPrice)
+        : position.pricePerShare
     };
   });
 
@@ -208,7 +192,9 @@ async function refreshPlan(env: Env): Promise<PlanSnapshot> {
     positions,
     liveData: {
       isLive: true,
-      source: quotes.size > 0 ? "Cloudflare Worker + Leeway quotes" : "Cloudflare Worker fallback snapshot",
+      source: tsmPrice !== null
+        ? `${basePlan.liveData.source} + Twelve Data (TSM)`
+        : basePlan.liveData.source,
       lastUpdatedUtc: refreshedAt,
       refreshIntervalMinutes: REFRESH_INTERVAL_MINUTES,
       notes: liveNotes
@@ -217,9 +203,9 @@ async function refreshPlan(env: Env): Promise<PlanSnapshot> {
       {
         date: refreshedAt,
         assetValueTwd: toMoney(assetValueTwd),
-        note: quotes.size > 0
-          ? "Cloudflare Worker refreshed the latest asset values with Leeway quotes."
-          : "Cloudflare Worker could not refresh quotes and kept the Pages baseline snapshot."
+        note: tsmPrice !== null
+          ? "Worker refreshed the latest TSM price with Twelve Data and preserved the latest IB Flex snapshot."
+          : "Worker kept the latest IB Flex snapshot unchanged."
       },
       ...basePlan.history.filter((point) => point.date !== refreshedAt).slice(0, 11)
     ]
@@ -339,32 +325,20 @@ async function loadBasePlan(env: Env, extraNote?: string): Promise<PlanSnapshot>
   };
 }
 
-async function fetchLeewayQuotes(apiToken: string): Promise<{ quotes: Map<string, LeewayQuote>; errors: string[] }> {
-  const quotes = new Map<string, LeewayQuote>();
-  const errors: string[] = [];
+async function fetchTsmPrice(apiKey: string): Promise<number> {
+  const endpoint = `${TWELVE_DATA_PRICE_URL}?symbol=TSM&apikey=${encodeURIComponent(apiKey)}`;
+  const response = await fetchJson<TwelveDataPrice>(endpoint);
 
-  for (const [ticker, instrument] of Object.entries(INSTRUMENTS)) {
-    const endpoint = `${LEEWAY_LIVE_BASE_URL}/${instrument.code}?apitoken=${encodeURIComponent(apiToken)}`;
-
-    try {
-      const quote = await fetchJson<LeewayQuote>(endpoint);
-      if (quote.error || quote.message) {
-        errors.push(`${ticker}: ${quote.error ?? quote.message}`);
-        continue;
-      }
-
-      if (quote.close === undefined) {
-        errors.push(`${ticker}: missing close price`);
-        continue;
-      }
-
-      quotes.set(ticker, quote);
-    } catch (error) {
-      errors.push(`${ticker}: ${toErrorMessage(error)}`);
-    }
+  if (response.status === "error" || response.code || response.message) {
+    throw new Error(response.message ?? `Twelve Data error ${response.code ?? "unknown"}`);
   }
 
-  return { quotes, errors };
+  const numericPrice = Number(response.price);
+  if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+    throw new Error("Twelve Data did not return a valid TSM price.");
+  }
+
+  return numericPrice;
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
