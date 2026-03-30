@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Security.Authentication;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -153,7 +154,13 @@ internal sealed class FlexStatementSyncRunner(SyncOptions options)
 
     private static HttpClient CreateFlexClient(FlexWebServiceOptions options)
     {
-        var client = new HttpClient
+        var handler = new HttpClientHandler
+        {
+            SslProtocols = SslProtocols.Tls12,
+            UseProxy = false
+        };
+
+        var client = new HttpClient(handler)
         {
             BaseAddress = new Uri(AppendTrailingSlash(options.BaseUrl))
         };
@@ -166,7 +173,13 @@ internal sealed class FlexStatementSyncRunner(SyncOptions options)
 
     private static HttpClient CreateWorkerClient()
     {
-        var client = new HttpClient();
+        var handler = new HttpClientHandler
+        {
+            SslProtocols = SslProtocols.Tls12,
+            UseProxy = false
+        };
+
+        var client = new HttpClient(handler);
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         return client;
     }
