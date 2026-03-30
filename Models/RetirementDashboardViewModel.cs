@@ -30,6 +30,14 @@ public sealed class RetirementDashboardViewModel
 
     public string ActualHoldingsSourceText { get; init; } = string.Empty;
 
+    public int WeeklyBuyTuesdayCount { get; init; }
+
+    public string WeeklyBuyPlanWindowText { get; init; } = string.Empty;
+
+    public decimal WeeklyBuyTotalTwd { get; init; }
+
+    public string WeeklyBuyTotalText { get; init; } = string.Empty;
+
     public decimal CurrentAssetTwd { get; init; }
 
     public decimal CurrentInvestedTwd { get; init; }
@@ -110,6 +118,8 @@ public sealed class RetirementDashboardViewModel
 
     public IReadOnlyList<ActualHoldingViewModel> ActualHoldings { get; init; } = [];
 
+    public IReadOnlyList<WeeklyBuyPlanViewModel> WeeklyBuyPlans { get; init; } = [];
+
     public IReadOnlyList<PositionViewModel> Positions { get; init; } = [];
 
     public IReadOnlyList<HistoryPointViewModel> History { get; init; } = [];
@@ -124,6 +134,23 @@ public sealed class ActualHoldingViewModel
     public string MarketValueText { get; init; } = string.Empty;
 
     public string DetailText { get; init; } = string.Empty;
+}
+
+public sealed class WeeklyBuyPlanViewModel
+{
+    public string Ticker { get; init; } = string.Empty;
+
+    public string CurrentHoldingTicker { get; init; } = string.Empty;
+
+    public string TargetValueText { get; init; } = string.Empty;
+
+    public string CurrentValueText { get; init; } = string.Empty;
+
+    public string GapValueText { get; init; } = string.Empty;
+
+    public string WeeklyBuyText { get; init; } = string.Empty;
+
+    public string NoteText { get; init; } = string.Empty;
 }
 
 public sealed class PositionViewModel

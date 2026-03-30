@@ -48,6 +48,33 @@ else if (_dashboard is not null)
         </div>
     </section>
 
+    <section class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">每週二買入計畫</p>
+                <h2>年底前追上目標配置</h2>
+            </div>
+            <span class="muted">@_dashboard.WeeklyBuyPlanWindowText</span>
+        </div>
+        <div class="metrics-grid">
+            <article class="metric-card accent">
+                <span class="metric-label">每週二合計買入</span>
+                <strong>@_dashboard.WeeklyBuyTotalText</strong>
+                <p>依剩餘 @_dashboard.WeeklyBuyTuesdayCount 個星期二平均分攤</p>
+            </article>
+            @foreach (var plan in _dashboard.WeeklyBuyPlans)
+            {
+                <article class="metric-card">
+                    <span class="metric-label">@plan.Ticker</span>
+                    <strong>@plan.WeeklyBuyText</strong>
+                    <p>目標 @plan.TargetValueText</p>
+                    <p>現有 @plan.CurrentValueText，尚差 @plan.GapValueText</p>
+                    <p class="panel-note">@plan.NoteText</p>
+                </article>
+            }
+        </div>
+    </section>
+
     <section class="hero-panel">
         <div class="hero-copy">
             <div class="live-meta">
@@ -265,8 +292,8 @@ else if (_dashboard is not null)
             </div>
             <ol class="step-list">
                 <li>最上方區塊顯示依 IB 報告整理的真實持股，其中 2330 先採你提供的約值。</li>
+                <li>第二個區塊會把追上退休情境目標市值所需的金額，平均拆到年底前每個星期二。</li>
                 <li>下方卡片與表格維持退休情境配置，並改用模擬年現金股利來推估現金流。</li>
-                <li>首頁優先讀 Worker API；如果即時來源暫時失敗，就自動退回本地 JSON，不會整站空白。</li>
             </ol>
             <p class="panel-note">@_dashboard.Notes</p>
         </article>

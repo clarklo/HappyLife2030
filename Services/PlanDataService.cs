@@ -91,9 +91,11 @@ public sealed class PlanDataService(HttpClient httpClient)
             fixedDepositAnnualInterestTwd;
         var currentMonthlyPassiveIncomeTwd = currentAnnualDividendTwd / 12m;
 
-        var monthsRemaining = Math.Max(0, ((scenarioSnapshot.Goal.TargetDate.Year - displaySnapshot.AsOfDate.Year) * 12) + scenarioSnapshot.Goal.TargetDate.Month - displaySnapshot.AsOfDate.Month);
-        var annualPlanMonthsRemaining = scenarioSnapshot.AnnualPlan.Year == displaySnapshot.AsOfDate.Year
-            ? Math.Max(1, scenarioSnapshot.AnnualPlan.Deadline.Month - displaySnapshot.AsOfDate.Month + 1)
+        var today = DateTime.Today;
+        var annualPlanDeadline = scenarioSnapshot.AnnualPlan.Deadline.Date;
+        var monthsRemaining = Math.Max(0, ((scenarioSnapshot.Goal.TargetDate.Year - today.Year) * 12) + scenarioSnapshot.Goal.TargetDate.Month - today.Month);
+        var annualPlanMonthsRemaining = scenarioSnapshot.AnnualPlan.Year == today.Year
+            ? Math.Max(1, annualPlanDeadline.Month - today.Month + 1)
             : 0;
         var annualInvestmentTargetTwd = scenarioSnapshot.AnnualPlan.TargetInvestmentTwd;
         var annualInvestmentGapTwd = Math.Max(0m, annualInvestmentTargetTwd - currentInvestedTwd);
@@ -157,6 +159,9 @@ public sealed class PlanDataService(HttpClient httpClient)
             })
             .ToList();
         var actualHoldingsValueTwd = actualHoldingDisplays.Sum(holding => holding.MarketValueTwd);
+        var weeklyBuyTuesdayCount = CountRemainingWeekdayOccurrences(today, annualPlanDeadline, DayOfWeek.Tuesday);
+        var weeklyBuyPlans = BuildWeeklyBuyPlans(actualHoldingDisplays, scenarioSnapshot.Positions, weeklyBuyTuesdayCount, usdToTwdRate);
+        var weeklyBuyTotalTwd = weeklyBuyPlans.Sum(plan => plan.WeeklyBuyTwd);
 
         var history = scenarioSnapshot.History
             .OrderByDescending(point => point.Date)
@@ -183,6 +188,9 @@ public sealed class PlanDataService(HttpClient httpClient)
         var actualHoldingsSourceText = liveSnapshot is null
             ? "2330 依你手動提供約值；海外 ETF 暫時顯示本地快照。"
             : "2330 依你手動提供約值；海外 ETF 依最新 IB / Worker 部位更新。";
+        var weeklyBuyPlanWindowText = weeklyBuyTuesdayCount == 0
+            ? $"{today:yyyy/MM/dd} 之後已沒有可用星期二。"
+            : $"從 {today:yyyy/MM/dd} 到 {annualPlanDeadline:yyyy/MM/dd}，還有 {weeklyBuyTuesdayCount} 個星期二可平均分攤。";
 
         return new RetirementDashboardViewModel
         {
@@ -200,6 +208,10 @@ public sealed class PlanDataService(HttpClient httpClient)
             ActualHoldingsValueText = $"NT${actualHoldingsValueTwd:N0}",
             ActualHoldingsCount = actualHoldings.Count,
             ActualHoldingsSourceText = actualHoldingsSourceText,
+            WeeklyBuyTuesdayCount = weeklyBuyTuesdayCount,
+            WeeklyBuyPlanWindowText = weeklyBuyPlanWindowText,
+            WeeklyBuyTotalTwd = weeklyBuyTotalTwd,
+            WeeklyBuyTotalText = $"NT${weeklyBuyTotalTwd:N0}",
             CurrentAssetTwd = currentAssetTwd,
             CurrentInvestedTwd = currentInvestedTwd,
             FixedDepositPrincipalTwd = fixedDepositPrincipalTwd,
@@ -240,6 +252,16 @@ public sealed class PlanDataService(HttpClient httpClient)
             CurrentYieldOnCostText = $"{currentYieldOnCost:P2}",
             Notes = scenarioSnapshot.Notes,
             ActualHoldings = actualHoldings,
+            WeeklyBuyPlans = weeklyBuyPlans.Select(plan => new WeeklyBuyPlanViewModel
+            {
+                Ticker = plan.Ticker,
+                CurrentHoldingTicker = plan.CurrentHoldingTicker,
+                TargetValueText = $"NT${plan.TargetValueTwd:N0}",
+                CurrentValueText = $"NT${plan.CurrentValueTwd:N0}",
+                GapValueText = $"NT${plan.GapValueTwd:N0}",
+                WeeklyBuyText = $"NT${plan.WeeklyBuyTwd:N0}",
+                NoteText = plan.NoteText
+            }).ToList(),
             Positions = positions,
             History = history
         };
@@ -317,6 +339,67 @@ public sealed class PlanDataService(HttpClient httpClient)
         }
 
         return displays;
+    }
+
+    private static List<WeeklyBuyPlanDisplay> BuildWeeklyBuyPlans(IReadOnlyList<ActualHoldingDisplay> actualHoldings, IReadOnlyList<InvestmentPosition> targetPositions, int tuesdayCount, decimal usdToTwdRate)
+    {
+        var actualLookup = actualHoldings.ToDictionary(holding => holding.Ticker, StringComparer.OrdinalIgnoreCase);
+        var plans = new List<WeeklyBuyPlanDisplay>();
+
+        foreach (var targetPosition in targetPositions)
+        {
+            var targetValueTwd = ConvertToTwd(targetPosition.Quantity * targetPosition.PricePerShare, targetPosition.Currency, usdToTwdRate);
+            var currentHoldingTicker = ResolveCurrentHoldingTicker(targetPosition.Ticker);
+            var currentHoldingValueTwd = actualLookup.TryGetValue(currentHoldingTicker, out var actualHolding)
+                ? actualHolding.MarketValueTwd
+                : 0m;
+            var gapValueTwd = Math.Max(0m, targetValueTwd - currentHoldingValueTwd);
+            var weeklyBuyTwd = tuesdayCount <= 0 ? gapValueTwd : gapValueTwd / tuesdayCount;
+            var noteText = currentHoldingTicker == targetPosition.Ticker
+                ? $"以目前 {currentHoldingTicker} 持股為基礎分攤"
+                : $"以目前 {currentHoldingTicker} 視為台積電部位換算";
+
+            plans.Add(new WeeklyBuyPlanDisplay
+            {
+                Ticker = targetPosition.Ticker,
+                CurrentHoldingTicker = currentHoldingTicker,
+                TargetValueTwd = targetValueTwd,
+                CurrentValueTwd = currentHoldingValueTwd,
+                GapValueTwd = gapValueTwd,
+                WeeklyBuyTwd = weeklyBuyTwd,
+                NoteText = noteText
+            });
+        }
+
+        return plans;
+    }
+
+    private static int CountRemainingWeekdayOccurrences(DateTime startDate, DateTime endDate, DayOfWeek dayOfWeek)
+    {
+        if (startDate.Date > endDate.Date)
+        {
+            return 0;
+        }
+
+        var count = 0;
+        for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
+        {
+            if (date.DayOfWeek == dayOfWeek)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private static string ResolveCurrentHoldingTicker(string targetTicker)
+    {
+        return targetTicker.ToUpperInvariant() switch
+        {
+            "TSM" => "2330",
+            _ => targetTicker
+        };
     }
 
     private static string BuildActualHoldingDetailText(decimal? quantity, decimal? pricePerShare, string currency, string note, decimal marketValueTwd)
@@ -414,5 +497,22 @@ public sealed class PlanDataService(HttpClient httpClient)
         public decimal MarketValueTwd { get; init; }
 
         public string DetailText { get; init; } = string.Empty;
+    }
+
+    private sealed class WeeklyBuyPlanDisplay
+    {
+        public string Ticker { get; init; } = string.Empty;
+
+        public string CurrentHoldingTicker { get; init; } = string.Empty;
+
+        public decimal TargetValueTwd { get; init; }
+
+        public decimal CurrentValueTwd { get; init; }
+
+        public decimal GapValueTwd { get; init; }
+
+        public decimal WeeklyBuyTwd { get; init; }
+
+        public string NoteText { get; init; } = string.Empty;
     }
 }
