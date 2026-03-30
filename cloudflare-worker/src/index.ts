@@ -46,6 +46,7 @@ type PlanSnapshot = {
     quantity: number;
     pricePerShare: number;
     annualDividendPerShare: number;
+    annualDividendProxyTicker?: string;
     monthlyContributionUsd: number;
   }>;
   history: Array<{
@@ -70,6 +71,7 @@ type IngestPositionUpdate = {
   quantity?: number;
   pricePerShare?: number;
   annualDividendPerShare?: number;
+  annualDividendProxyTicker?: string;
 };
 
 type IngestRequest = {
@@ -234,7 +236,8 @@ async function ingestSnapshot(payload: IngestRequest, env: Env): Promise<PlanSna
       pricePerShare: update.pricePerShare !== undefined ? toMoney(update.pricePerShare) : position.pricePerShare,
       annualDividendPerShare: update.annualDividendPerShare !== undefined
         ? toMoney(update.annualDividendPerShare)
-        : position.annualDividendPerShare
+        : position.annualDividendPerShare,
+      annualDividendProxyTicker: update.annualDividendProxyTicker ?? position.annualDividendProxyTicker
     };
   });
 

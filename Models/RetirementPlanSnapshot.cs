@@ -1,4 +1,4 @@
-﻿namespace retirement_dashboard.Models;
+namespace retirement_dashboard.Models;
 
 public sealed class RetirementPlanSnapshot
 {
@@ -87,6 +87,8 @@ public sealed class InvestmentPosition
     public decimal PricePerShare { get; set; }
 
     public decimal AnnualDividendPerShare { get; set; }
+
+    public string AnnualDividendProxyTicker { get; set; } = string.Empty;
 
     public decimal MonthlyContributionUsd { get; set; }
 }

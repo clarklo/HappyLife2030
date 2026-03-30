@@ -123,6 +123,9 @@ public sealed class PlanDataService(HttpClient httpClient)
                 var marketValueTwd = ConvertToTwd(position.Quantity * position.PricePerShare, position.Currency, usdToTwdRate);
                 var annualDividendTwd = ConvertToTwd(position.Quantity * position.AnnualDividendPerShare, position.Currency, usdToTwdRate);
                 var allocationShare = currentAssetTwd == 0 ? 0 : marketValueTwd / currentAssetTwd;
+                var annualDividendSuffix = string.IsNullOrWhiteSpace(position.AnnualDividendProxyTicker)
+                    ? string.Empty
+                    : $" ({position.AnnualDividendProxyTicker})";
 
                 return new PositionViewModel
                 {
@@ -131,7 +134,7 @@ public sealed class PlanDataService(HttpClient httpClient)
                     QuantityText = position.Quantity.ToString("N2"),
                     PriceText = position.Currency == "USD" ? $"US${position.PricePerShare:N2}" : $"NT${position.PricePerShare:N2}",
                     MarketValueText = $"NT${marketValueTwd:N0}",
-                    AnnualDividendText = $"NT${annualDividendTwd:N0}",
+                    AnnualDividendText = $"NT${annualDividendTwd:N0}{annualDividendSuffix}",
                     PlannedContributionUsdText = $"US${position.MonthlyContributionUsd:N0}",
                     AllocationShareText = $"{allocationShare:P0}",
                     AllocationShareCss = $"{allocationShare * 100m:0.##}%"
