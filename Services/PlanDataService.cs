@@ -123,9 +123,10 @@ public sealed class PlanDataService(HttpClient httpClient)
                 var marketValueTwd = ConvertToTwd(position.Quantity * position.PricePerShare, position.Currency, usdToTwdRate);
                 var annualDividendTwd = ConvertToTwd(position.Quantity * position.AnnualDividendPerShare, position.Currency, usdToTwdRate);
                 var allocationShare = currentAssetTwd == 0 ? 0 : marketValueTwd / currentAssetTwd;
-                var annualDividendSuffix = string.IsNullOrWhiteSpace(position.AnnualDividendProxyTicker)
+                var annualDividendProxyTicker = ResolveAnnualDividendProxyTicker(position);
+                var annualDividendSuffix = string.IsNullOrWhiteSpace(annualDividendProxyTicker)
                     ? string.Empty
-                    : $" ({position.AnnualDividendProxyTicker})";
+                    : $" ({annualDividendProxyTicker})";
 
                 return new PositionViewModel
                 {
@@ -239,6 +240,22 @@ public sealed class PlanDataService(HttpClient httpClient)
         var futureValueOfContributions = monthlyContribution * ((growthFactor - 1) / monthlyRate);
 
         return futureValueOfPrincipal + futureValueOfContributions;
+    }
+
+    private static string ResolveAnnualDividendProxyTicker(InvestmentPosition position)
+    {
+        if (!string.IsNullOrWhiteSpace(position.AnnualDividendProxyTicker))
+        {
+            return position.AnnualDividendProxyTicker;
+        }
+
+        return position.Ticker.ToUpperInvariant() switch
+        {
+            "CSNDX" => "EXXT",
+            "CSPX" => "IUSA",
+            "VWRA" => "VWRL",
+            _ => string.Empty
+        };
     }
 
     private static decimal ConvertToTwd(decimal amount, string currency, decimal usdToTwdRate)
