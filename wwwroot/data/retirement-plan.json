@@ -90,27 +90,27 @@
                                "ticker":  "CSNDX",
                                "name":  "iShares NASDAQ 100 UCITS ETF (Acc)",
                                "currency":  "USD",
-                               "quantity":  2,
-                               "pricePerShare":  1337.2,
-                               "marketValueTwd":  85580.8,
+                               "quantity":  5,
+                               "pricePerShare":  1378,
+                               "marketValueTwd":  220480,
                                "note":  ""
                            },
                            {
                                "ticker":  "CSPX",
                                "name":  "iShares Core S\u0026P 500 UCITS ETF (Acc)",
                                "currency":  "USD",
-                               "quantity":  7,
-                               "pricePerShare":  688.84,
-                               "marketValueTwd":  154300.16,
+                               "quantity":  14,
+                               "pricePerShare":  705.91,
+                               "marketValueTwd":  316247.68,
                                "note":  ""
                            },
                            {
                                "ticker":  "VWRA",
                                "name":  "Vanguard FTSE All-World UCITS ETF (Acc)",
                                "currency":  "USD",
-                               "quantity":  20,
-                               "pricePerShare":  162.4,
-                               "marketValueTwd":  103936,
+                               "quantity":  38,
+                               "pricePerShare":  167.08,
+                               "marketValueTwd":  203654.72,
                                "note":  ""
                            }
                        ]
