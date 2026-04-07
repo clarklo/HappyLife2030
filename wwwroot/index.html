@@ -6,6 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>2030 退休戰情看板</title>
     <base href="/" />
+    <meta name="theme-color" content="#0a1d24" />
+    <meta name="description" content="退休配置、真實持股與模擬現金股利的戰情儀表板。" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="css/app.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
@@ -22,12 +28,19 @@
     </div>
 
     <div id="blazor-error-ui">
-        發生執行錯誤。
+        發生未預期錯誤。
         <a href="." class="reload">重新載入</a>
         <span class="dismiss">x</span>
     </div>
 
     <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", function () {
+                navigator.serviceWorker.register("./service-worker.js");
+            });
+        }
+    </script>
 </body>
 
 </html>

@@ -1,0 +1,31 @@
+{
+  "name": "2030 退休戰情看板",
+  "short_name": "退休看板",
+  "id": "/",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#071117",
+  "theme_color": "#0a1d24",
+  "description": "退休配置、真實持股與模擬現金股利的戰情儀表板。",
+  "lang": "zh-Hant",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

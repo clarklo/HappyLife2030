@@ -7,7 +7,7 @@
     margin: 0 auto;
     padding: 28px 0 0;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     gap: 16px;
 }
@@ -25,15 +25,6 @@
     color: #f4efe6;
 }
 
-.brand-link {
-    color: #c9e7d8;
-    text-decoration: none;
-    border: 1px solid rgba(201, 231, 216, 0.28);
-    padding: 0.75rem 1rem;
-    border-radius: 999px;
-    backdrop-filter: blur(12px);
-}
-
 .shell-content {
     width: min(1160px, calc(100% - 32px));
     margin: 0 auto;
@@ -43,12 +34,5 @@
 @media (max-width: 720px) {
     .shell-header {
         padding-top: 18px;
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .brand-link {
-        width: 100%;
-        text-align: center;
     }
 }
