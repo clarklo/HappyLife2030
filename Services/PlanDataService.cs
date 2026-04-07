@@ -158,6 +158,16 @@ public sealed class PlanDataService(HttpClient httpClient)
                 DetailText = holding.DetailText
             })
             .ToList();
+        var actualDividendBreakdowns = actualHoldingDisplays
+            .Select(holding => new ActualDividendBreakdownViewModel
+            {
+                Ticker = holding.Ticker,
+                Name = holding.Name,
+                MonthlyDividendText = $"NT${(holding.AnnualDividendTwd / 12m):N0}",
+                AnnualDividendText = $"年股利 NT${holding.AnnualDividendTwd:N0}",
+                NoteText = holding.DividendNote
+            })
+            .ToList();
         var actualHoldingsValueTwd = actualHoldingDisplays.Sum(holding => holding.MarketValueTwd);
         var actualDividendAnnualTwd = actualHoldingDisplays.Sum(holding => holding.AnnualDividendTwd);
         var actualDividendMonthlyTwd = actualDividendAnnualTwd / 12m;
@@ -269,6 +279,7 @@ public sealed class PlanDataService(HttpClient httpClient)
             CurrentYieldOnCostText = $"{currentYieldOnCost:P2}",
             Notes = scenarioSnapshot.Notes,
             ActualHoldings = actualHoldings,
+            ActualDividendBreakdowns = actualDividendBreakdowns,
             WeeklyBuyPlans = weeklyBuyPlans.Select(plan => new WeeklyBuyPlanViewModel
             {
                 Ticker = plan.Ticker,
@@ -348,6 +359,7 @@ public sealed class PlanDataService(HttpClient httpClient)
                     Name = holding.Name,
                     MarketValueTwd = marketValueTwd,
                     AnnualDividendTwd = CalculateActualHoldingAnnualDividendTwd(marketValueTwd, livePosition.Quantity, dividendSourcePosition, usdToTwdRate),
+                    DividendNote = BuildActualDividendNote(holding.Ticker, dividendSourcePosition),
                     DetailText = BuildActualHoldingDetailText(livePosition.Quantity, livePosition.PricePerShare, livePosition.Currency, holding.Note, marketValueTwd)
                 });
 
@@ -360,6 +372,7 @@ public sealed class PlanDataService(HttpClient httpClient)
                 Name = holding.Name,
                 MarketValueTwd = holding.MarketValueTwd,
                 AnnualDividendTwd = CalculateActualHoldingAnnualDividendTwd(holding.MarketValueTwd, holding.Quantity, dividendSourcePosition, usdToTwdRate),
+                DividendNote = BuildActualDividendNote(holding.Ticker, dividendSourcePosition),
                 DetailText = BuildActualHoldingDetailText(holding.Quantity, holding.PricePerShare, holding.Currency, holding.Note, holding.MarketValueTwd)
             });
         }
@@ -489,6 +502,23 @@ public sealed class PlanDataService(HttpClient httpClient)
         return marketValueTwd * annualYieldRate;
     }
 
+    private static string BuildActualDividendNote(string actualHoldingTicker, InvestmentPosition? dividendSourcePosition)
+    {
+        if (dividendSourcePosition is null)
+        {
+            return string.Empty;
+        }
+
+        if (actualHoldingTicker.Equals("2330", StringComparison.OrdinalIgnoreCase))
+        {
+            return "以 TSM 配息率模擬";
+        }
+
+        return string.IsNullOrWhiteSpace(dividendSourcePosition.AnnualDividendProxyTicker)
+            ? "依目前設定估算"
+            : $"以 {dividendSourcePosition.AnnualDividendProxyTicker} 配息率模擬";
+    }
+
     private static string BuildWeeklyBuyQuantityText(InvestmentPosition targetPosition, decimal weeklyBuyTwd, decimal usdToTwdRate, string currentHoldingTicker)
     {
         if (!currentHoldingTicker.Equals(targetPosition.Ticker, StringComparison.OrdinalIgnoreCase))
@@ -573,6 +603,8 @@ public sealed class PlanDataService(HttpClient httpClient)
         public decimal MarketValueTwd { get; init; }
 
         public decimal AnnualDividendTwd { get; init; }
+
+        public string DividendNote { get; init; } = string.Empty;
 
         public string DetailText { get; init; } = string.Empty;
     }

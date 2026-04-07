@@ -138,6 +138,8 @@ public sealed class RetirementDashboardViewModel
 
     public IReadOnlyList<ActualHoldingViewModel> ActualHoldings { get; init; } = [];
 
+    public IReadOnlyList<ActualDividendBreakdownViewModel> ActualDividendBreakdowns { get; init; } = [];
+
     public IReadOnlyList<WeeklyBuyPlanViewModel> WeeklyBuyPlans { get; init; } = [];
 
     public IReadOnlyList<PositionViewModel> Positions { get; init; } = [];
@@ -171,6 +173,19 @@ public sealed class WeeklyBuyPlanViewModel
     public string WeeklyBuyText { get; init; } = string.Empty;
 
     public string WeeklyBuyQuantityText { get; init; } = string.Empty;
+
+    public string NoteText { get; init; } = string.Empty;
+}
+
+public sealed class ActualDividendBreakdownViewModel
+{
+    public string Ticker { get; init; } = string.Empty;
+
+    public string Name { get; init; } = string.Empty;
+
+    public string MonthlyDividendText { get; init; } = string.Empty;
+
+    public string AnnualDividendText { get; init; } = string.Empty;
 
     public string NoteText { get; init; } = string.Empty;
 }
