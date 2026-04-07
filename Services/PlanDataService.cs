@@ -148,7 +148,7 @@ public sealed class PlanDataService(HttpClient httpClient)
             })
             .ToList();
 
-        var actualHoldingDisplays = BuildActualHoldingDisplays(staticSnapshot, liveSnapshot, usdToTwdRate);
+        var actualHoldingDisplays = BuildActualHoldingDisplays(staticSnapshot, liveSnapshot, scenarioSnapshot.Positions, usdToTwdRate);
         var actualHoldings = actualHoldingDisplays
             .Select(holding => new ActualHoldingViewModel
             {
@@ -159,6 +159,13 @@ public sealed class PlanDataService(HttpClient httpClient)
             })
             .ToList();
         var actualHoldingsValueTwd = actualHoldingDisplays.Sum(holding => holding.MarketValueTwd);
+        var actualDividendAnnualTwd = actualHoldingDisplays.Sum(holding => holding.AnnualDividendTwd);
+        var actualDividendMonthlyTwd = actualDividendAnnualTwd / 12m;
+        var actualDividendYieldRate = actualHoldingsValueTwd == 0 ? 0 : actualDividendAnnualTwd / actualHoldingsValueTwd;
+        var actualDividendProgress = targetMonthlyIncomeTwd == 0 ? 0 : actualDividendMonthlyTwd / targetMonthlyIncomeTwd;
+        var actualDividendPieProgress = Math.Min(1m, actualDividendProgress);
+        var actualDividendPieDegrees = actualDividendPieProgress * 360m;
+        var actualDividendTargetGapTwd = Math.Max(0m, targetMonthlyIncomeTwd - actualDividendMonthlyTwd);
         var weeklyBuyTuesdayCount = CountRemainingWeekdayOccurrences(today, annualPlanDeadline, DayOfWeek.Tuesday);
         var weeklyBuyPlans = BuildWeeklyBuyPlans(actualHoldingDisplays, scenarioSnapshot.Positions, weeklyBuyTuesdayCount, usdToTwdRate);
         var weeklyBuyTotalTwd = weeklyBuyPlans.Sum(plan => plan.WeeklyBuyTwd);
@@ -208,6 +215,16 @@ public sealed class PlanDataService(HttpClient httpClient)
             ActualHoldingsValueText = $"NT${actualHoldingsValueTwd:N0}",
             ActualHoldingsCount = actualHoldings.Count,
             ActualHoldingsSourceText = actualHoldingsSourceText,
+            ActualDividendAnnualTwd = actualDividendAnnualTwd,
+            ActualDividendAnnualText = $"NT${actualDividendAnnualTwd:N0}",
+            ActualDividendMonthlyTwd = actualDividendMonthlyTwd,
+            ActualDividendMonthlyText = $"NT${actualDividendMonthlyTwd:N0}",
+            ActualDividendYieldText = $"{actualDividendYieldRate:P2}",
+            ActualDividendProgressText = $"{actualDividendProgress:P1}",
+            ActualDividendProgressCss = $"{Math.Min(100m, actualDividendProgress * 100m):0.##}%",
+            ActualDividendTargetGapText = $"NT${actualDividendTargetGapTwd:N0}",
+            ActualDividendPieStyle = $"background: conic-gradient(var(--mint) 0deg {actualDividendPieDegrees:0.##}deg, rgba(255, 255, 255, 0.08) {actualDividendPieDegrees:0.##}deg 360deg);",
+            ActualDividendNotes = "2330 先以 TSM 的目前配息率模擬；CSNDX、CSPX、VWRA 則沿用 EXXT、IUSA、VWRL 的模擬現金股利設定。",
             WeeklyBuyTuesdayCount = weeklyBuyTuesdayCount,
             WeeklyBuyPlanWindowText = weeklyBuyPlanWindowText,
             WeeklyBuyTotalTwd = weeklyBuyTotalTwd,
@@ -307,15 +324,21 @@ public sealed class PlanDataService(HttpClient httpClient)
         };
     }
 
-    private static List<ActualHoldingDisplay> BuildActualHoldingDisplays(RetirementPlanSnapshot staticSnapshot, RetirementPlanSnapshot? liveSnapshot, decimal usdToTwdRate)
+    private static List<ActualHoldingDisplay> BuildActualHoldingDisplays(RetirementPlanSnapshot staticSnapshot, RetirementPlanSnapshot? liveSnapshot, IReadOnlyList<InvestmentPosition> dividendSourcePositions, decimal usdToTwdRate)
     {
         var liveLookup = (liveSnapshot?.Positions ?? [])
+            .GroupBy(position => position.Ticker, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        var dividendSourceLookup = dividendSourcePositions
             .GroupBy(position => position.Ticker, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
         var displays = new List<ActualHoldingDisplay>();
 
         foreach (var holding in staticSnapshot.ActualHoldings)
         {
+            var dividendSourceTicker = ResolveDividendSourceTicker(holding.Ticker);
+            dividendSourceLookup.TryGetValue(dividendSourceTicker, out var dividendSourcePosition);
+
             if (liveLookup.TryGetValue(holding.Ticker, out var livePosition))
             {
                 var marketValueTwd = ConvertToTwd(livePosition.Quantity * livePosition.PricePerShare, livePosition.Currency, usdToTwdRate);
@@ -324,6 +347,7 @@ public sealed class PlanDataService(HttpClient httpClient)
                     Ticker = holding.Ticker,
                     Name = holding.Name,
                     MarketValueTwd = marketValueTwd,
+                    AnnualDividendTwd = CalculateActualHoldingAnnualDividendTwd(marketValueTwd, livePosition.Quantity, dividendSourcePosition, usdToTwdRate),
                     DetailText = BuildActualHoldingDetailText(livePosition.Quantity, livePosition.PricePerShare, livePosition.Currency, holding.Note, marketValueTwd)
                 });
 
@@ -335,6 +359,7 @@ public sealed class PlanDataService(HttpClient httpClient)
                 Ticker = holding.Ticker,
                 Name = holding.Name,
                 MarketValueTwd = holding.MarketValueTwd,
+                AnnualDividendTwd = CalculateActualHoldingAnnualDividendTwd(holding.MarketValueTwd, holding.Quantity, dividendSourcePosition, usdToTwdRate),
                 DetailText = BuildActualHoldingDetailText(holding.Quantity, holding.PricePerShare, holding.Currency, holding.Note, holding.MarketValueTwd)
             });
         }
@@ -405,6 +430,15 @@ public sealed class PlanDataService(HttpClient httpClient)
         };
     }
 
+    private static string ResolveDividendSourceTicker(string actualHoldingTicker)
+    {
+        return actualHoldingTicker.ToUpperInvariant() switch
+        {
+            "2330" => "TSM",
+            _ => actualHoldingTicker
+        };
+    }
+
     private static string BuildActualHoldingDetailText(decimal? quantity, decimal? pricePerShare, string currency, string note, decimal marketValueTwd)
     {
         if (quantity is > 0 && pricePerShare is > 0)
@@ -431,6 +465,28 @@ public sealed class PlanDataService(HttpClient httpClient)
         }
 
         return $"{liveNotes} {simulationNote}";
+    }
+
+    private static decimal CalculateActualHoldingAnnualDividendTwd(decimal marketValueTwd, decimal? quantity, InvestmentPosition? dividendSourcePosition, decimal usdToTwdRate)
+    {
+        if (dividendSourcePosition is null)
+        {
+            return 0m;
+        }
+
+        if (quantity is > 0)
+        {
+            return ConvertToTwd(quantity.Value * dividendSourcePosition.AnnualDividendPerShare, dividendSourcePosition.Currency, usdToTwdRate);
+        }
+
+        var pricePerShareTwd = ConvertToTwd(dividendSourcePosition.PricePerShare, dividendSourcePosition.Currency, usdToTwdRate);
+        if (pricePerShareTwd <= 0)
+        {
+            return 0m;
+        }
+
+        var annualYieldRate = ConvertToTwd(dividendSourcePosition.AnnualDividendPerShare, dividendSourcePosition.Currency, usdToTwdRate) / pricePerShareTwd;
+        return marketValueTwd * annualYieldRate;
     }
 
     private static string BuildWeeklyBuyQuantityText(InvestmentPosition targetPosition, decimal weeklyBuyTwd, decimal usdToTwdRate, string currentHoldingTicker)
@@ -515,6 +571,8 @@ public sealed class PlanDataService(HttpClient httpClient)
         public string Name { get; init; } = string.Empty;
 
         public decimal MarketValueTwd { get; init; }
+
+        public decimal AnnualDividendTwd { get; init; }
 
         public string DetailText { get; init; } = string.Empty;
     }

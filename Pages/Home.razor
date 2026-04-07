@@ -19,6 +19,49 @@ else if (!string.IsNullOrWhiteSpace(_errorMessage))
 }
 else if (_dashboard is not null)
 {
+    <section class="panel dividend-summary-panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">真實持股現金流</p>
+                <h2>目前真實持股模擬月現金股利 @_dashboard.ActualDividendMonthlyText</h2>
+            </div>
+            <span class="muted">以目前真實持股與模擬配息率估算，不含定存利息</span>
+        </div>
+        <div class="dividend-summary-layout">
+            <div class="dividend-chart-card">
+                <div class="dividend-pie" style="@_dashboard.ActualDividendPieStyle">
+                    <div class="dividend-pie-inner">
+                        <strong>@_dashboard.ActualDividendMonthlyText</strong>
+                        <span>@_dashboard.ActualDividendProgressText</span>
+                    </div>
+                </div>
+                <p class="panel-note">以月退休目標 @FormatCurrency(_dashboard.TargetMonthlyIncomeTwd, "TWD") 為滿值，目前尚差 @_dashboard.ActualDividendTargetGapText。</p>
+            </div>
+            <div class="metrics-grid compact-grid">
+                <article class="metric-card accent">
+                    <span class="metric-label">模擬年現金股利</span>
+                    <strong>@_dashboard.ActualDividendAnnualText</strong>
+                    <p>依目前真實持股估算的年度現金流</p>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-label">模擬月現金股利</span>
+                    <strong>@_dashboard.ActualDividendMonthlyText</strong>
+                    <p>對照月退休目標的即時進度</p>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-label">目前模擬殖利率</span>
+                    <strong>@_dashboard.ActualDividendYieldText</strong>
+                    <p>以真實持股市值換算，不含定存</p>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-label">模擬來源</span>
+                    <strong>2330 + ETF Proxy</strong>
+                    <p>@_dashboard.ActualDividendNotes</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
     <section class="panel">
         <div class="panel-heading">
             <div>

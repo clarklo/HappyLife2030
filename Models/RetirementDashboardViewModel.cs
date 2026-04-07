@@ -30,6 +30,26 @@ public sealed class RetirementDashboardViewModel
 
     public string ActualHoldingsSourceText { get; init; } = string.Empty;
 
+    public decimal ActualDividendAnnualTwd { get; init; }
+
+    public string ActualDividendAnnualText { get; init; } = string.Empty;
+
+    public decimal ActualDividendMonthlyTwd { get; init; }
+
+    public string ActualDividendMonthlyText { get; init; } = string.Empty;
+
+    public string ActualDividendYieldText { get; init; } = string.Empty;
+
+    public string ActualDividendProgressText { get; init; } = string.Empty;
+
+    public string ActualDividendProgressCss { get; init; } = string.Empty;
+
+    public string ActualDividendTargetGapText { get; init; } = string.Empty;
+
+    public string ActualDividendPieStyle { get; init; } = string.Empty;
+
+    public string ActualDividendNotes { get; init; } = string.Empty;
+
     public int WeeklyBuyTuesdayCount { get; init; }
 
     public string WeeklyBuyPlanWindowText { get; init; } = string.Empty;
