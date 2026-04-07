@@ -260,6 +260,7 @@ public sealed class PlanDataService(HttpClient httpClient)
                 CurrentValueText = $"NT${plan.CurrentValueTwd:N0}",
                 GapValueText = $"NT${plan.GapValueTwd:N0}",
                 WeeklyBuyText = $"NT${plan.WeeklyBuyTwd:N0}",
+                WeeklyBuyQuantityText = plan.WeeklyBuyQuantityText,
                 NoteText = plan.NoteText
             }).ToList(),
             Positions = positions,
@@ -355,6 +356,7 @@ public sealed class PlanDataService(HttpClient httpClient)
                 : 0m;
             var gapValueTwd = Math.Max(0m, targetValueTwd - currentHoldingValueTwd);
             var weeklyBuyTwd = tuesdayCount <= 0 ? gapValueTwd : gapValueTwd / tuesdayCount;
+            var weeklyBuyQuantityText = BuildWeeklyBuyQuantityText(targetPosition, weeklyBuyTwd, usdToTwdRate, currentHoldingTicker);
             var noteText = currentHoldingTicker == targetPosition.Ticker
                 ? $"以目前 {currentHoldingTicker} 持股為基礎分攤"
                 : $"以目前 {currentHoldingTicker} 視為台積電部位換算";
@@ -367,6 +369,7 @@ public sealed class PlanDataService(HttpClient httpClient)
                 CurrentValueTwd = currentHoldingValueTwd,
                 GapValueTwd = gapValueTwd,
                 WeeklyBuyTwd = weeklyBuyTwd,
+                WeeklyBuyQuantityText = weeklyBuyQuantityText,
                 NoteText = noteText
             });
         }
@@ -428,6 +431,23 @@ public sealed class PlanDataService(HttpClient httpClient)
         }
 
         return $"{liveNotes} {simulationNote}";
+    }
+
+    private static string BuildWeeklyBuyQuantityText(InvestmentPosition targetPosition, decimal weeklyBuyTwd, decimal usdToTwdRate, string currentHoldingTicker)
+    {
+        if (!currentHoldingTicker.Equals(targetPosition.Ticker, StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Empty;
+        }
+
+        var pricePerShareTwd = ConvertToTwd(targetPosition.PricePerShare, targetPosition.Currency, usdToTwdRate);
+        if (pricePerShareTwd <= 0)
+        {
+            return string.Empty;
+        }
+
+        var quantity = weeklyBuyTwd / pricePerShareTwd;
+        return $"依目前價格，約每週買入 {quantity:N2} 股";
     }
 
     private static decimal CalculateFutureValue(decimal presentValue, decimal monthlyContribution, decimal annualReturnRate, int months)
@@ -512,6 +532,8 @@ public sealed class PlanDataService(HttpClient httpClient)
         public decimal GapValueTwd { get; init; }
 
         public decimal WeeklyBuyTwd { get; init; }
+
+        public string WeeklyBuyQuantityText { get; init; } = string.Empty;
 
         public string NoteText { get; init; } = string.Empty;
     }

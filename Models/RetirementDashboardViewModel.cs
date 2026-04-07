@@ -150,6 +150,8 @@ public sealed class WeeklyBuyPlanViewModel
 
     public string WeeklyBuyText { get; init; } = string.Empty;
 
+    public string WeeklyBuyQuantityText { get; init; } = string.Empty;
+
     public string NoteText { get; init; } = string.Empty;
 }
 

@@ -69,6 +69,10 @@ else if (_dashboard is not null)
                     <strong>@plan.WeeklyBuyText</strong>
                     <p>目標 @plan.TargetValueText</p>
                     <p>現有 @plan.CurrentValueText，尚差 @plan.GapValueText</p>
+                    @if (!string.IsNullOrWhiteSpace(plan.WeeklyBuyQuantityText))
+                    {
+                        <p>@plan.WeeklyBuyQuantityText</p>
+                    }
                     <p class="panel-note">@plan.NoteText</p>
                 </article>
             }
