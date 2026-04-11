@@ -83,34 +83,34 @@
                                "ticker":  "2330",
                                "name":  "台積電",
                                "currency":  "TWD",
-                               "marketValueTwd":  2400000,
-                               "note":  "依你提供資訊手動登錄，現值約 NT$2,400,000。"
+                               "marketValueTwd":  3000000,
+                               "note":  "依你提供資訊手動登錄，現值約 NT$3,000,000。"
                            },
                            {
                                "ticker":  "CSNDX",
                                "name":  "iShares NASDAQ 100 UCITS ETF (Acc)",
                                "currency":  "USD",
-                               "quantity":  5,
-                               "pricePerShare":  1378,
-                               "marketValueTwd":  220480,
+                               "quantity":  10,
+                               "pricePerShare":  1446.2,
+                               "marketValueTwd":  462784,
                                "note":  ""
                            },
                            {
                                "ticker":  "CSPX",
                                "name":  "iShares Core S\u0026P 500 UCITS ETF (Acc)",
                                "currency":  "USD",
-                               "quantity":  14,
-                               "pricePerShare":  705.91,
-                               "marketValueTwd":  316247.68,
+                               "quantity":  22,
+                               "pricePerShare":  734.02,
+                               "marketValueTwd":  516750.08,
                                "note":  ""
                            },
                            {
                                "ticker":  "VWRA",
                                "name":  "Vanguard FTSE All-World UCITS ETF (Acc)",
                                "currency":  "USD",
-                               "quantity":  38,
-                               "pricePerShare":  167.08,
-                               "marketValueTwd":  203654.72,
+                               "quantity":  56,
+                               "pricePerShare":  174.26,
+                               "marketValueTwd":  312273.92,
                                "note":  ""
                            }
                        ]
