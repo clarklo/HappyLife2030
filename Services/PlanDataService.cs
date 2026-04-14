@@ -358,7 +358,7 @@ public sealed class PlanDataService(HttpClient httpClient)
                     Ticker = holding.Ticker,
                     Name = holding.Name,
                     MarketValueTwd = marketValueTwd,
-                    AnnualDividendTwd = CalculateActualHoldingAnnualDividendTwd(marketValueTwd, livePosition.Quantity, dividendSourcePosition, usdToTwdRate),
+                    AnnualDividendTwd = CalculateActualHoldingAnnualDividendTwd(holding.Ticker, marketValueTwd, livePosition.Quantity, dividendSourcePosition, usdToTwdRate),
                     DividendNote = BuildActualDividendNote(holding.Ticker, dividendSourcePosition),
                     DetailText = BuildActualHoldingDetailText(livePosition.Quantity, livePosition.PricePerShare, livePosition.Currency, holding.Note, marketValueTwd)
                 });
@@ -371,7 +371,7 @@ public sealed class PlanDataService(HttpClient httpClient)
                 Ticker = holding.Ticker,
                 Name = holding.Name,
                 MarketValueTwd = holding.MarketValueTwd,
-                AnnualDividendTwd = CalculateActualHoldingAnnualDividendTwd(holding.MarketValueTwd, holding.Quantity, dividendSourcePosition, usdToTwdRate),
+                AnnualDividendTwd = CalculateActualHoldingAnnualDividendTwd(holding.Ticker, holding.MarketValueTwd, holding.Quantity, dividendSourcePosition, usdToTwdRate),
                 DividendNote = BuildActualDividendNote(holding.Ticker, dividendSourcePosition),
                 DetailText = BuildActualHoldingDetailText(holding.Quantity, holding.PricePerShare, holding.Currency, holding.Note, holding.MarketValueTwd)
             });
@@ -480,14 +480,14 @@ public sealed class PlanDataService(HttpClient httpClient)
         return $"{liveNotes} {simulationNote}";
     }
 
-    private static decimal CalculateActualHoldingAnnualDividendTwd(decimal marketValueTwd, decimal? quantity, InvestmentPosition? dividendSourcePosition, decimal usdToTwdRate)
+    private static decimal CalculateActualHoldingAnnualDividendTwd(string actualHoldingTicker, decimal marketValueTwd, decimal? quantity, InvestmentPosition? dividendSourcePosition, decimal usdToTwdRate)
     {
         if (dividendSourcePosition is null)
         {
             return 0m;
         }
 
-        if (quantity is > 0)
+        if (!actualHoldingTicker.Equals("2330", StringComparison.OrdinalIgnoreCase) && quantity is > 0)
         {
             return ConvertToTwd(quantity.Value * dividendSourcePosition.AnnualDividendPerShare, dividendSourcePosition.Currency, usdToTwdRate);
         }
