@@ -1,119 +1,119 @@
 {
-    "asOfDate":  "2026-03-27T00:00:00",
-    "goal":  {
-                 "targetDate":  "2030-12-31T00:00:00",
-                 "targetMonthlyIncomeTwd":  150000
-             },
-    "annualPlan":  {
-                       "year":  2026,
-                       "targetInvestmentTwd":  30000000,
-                       "deadline":  "2026-12-31T00:00:00"
-                   },
-    "fixedDeposit":  {
-                         "principalTwd":  15000000,
-                         "annualInterestRate":  0.017,
-                         "reinvestInterest":  true
-                     },
-    "liveData":  {
-                     "isLive":  false,
-                     "source":  "手動配置資料",
-                     "lastUpdatedUtc":  null,
-                     "refreshIntervalMinutes":  120,
-                     "notes":  "Cloudflare Worker 連接完成後，首頁會自動切換成每 2 小時更新的即時資料。"
-                 },
-    "assumptions":  {
-                        "assumedAnnualYieldRate":  0.04,
-                        "expectedAnnualReturnRate":  0.10,
-                        "usdToTwdRate":  32,
-                        "monthlyContributionUsd":  0,
-                        "reinvestDividends":  true
-                    },
-    "currentCashTwd":  0,
-    "notes":  "積極版配置：定存 1,500 萬固定不動，其餘 3,000 萬分配為 TSM 900 萬、CSNDX 900 萬、CSPX 750 萬、VWRA 450 萬。2028 年起再視市場與退休節奏，逐步轉向現金流資產。CSNDX、CSPX、VWRA 的年現金股利目前採模擬值，分別參考 EXXT、IUSA、VWRL 的配息水準回推。",
-    "positions":  [
-                      {
-                          "ticker":  "TSM",
-                          "name":  "台積電 ADR",
-                          "currency":  "USD",
-                          "quantity":  802.8145,
-                          "pricePerShare":  328.16,
-                          "annualDividendPerShare":  3.52,
-                          "monthlyContributionUsd":  0
-                      },
-                      {
-                          "ticker":  "CSNDX",
-                          "name":  "iShares NASDAQ 100 UCITS ETF (Acc)",
-                          "currency":  "USD",
-                          "quantity":  200.6063,
-                          "pricePerShare":  1341.80,
-                          "annualDividendPerShare":  2.5494,
-                          "monthlyContributionUsd":  0,
-                          "annualDividendProxyTicker":  "EXXT"
-                      },
-                      {
-                          "ticker":  "CSPX",
-                          "name":  "iShares Core S\u0026P 500 UCITS ETF (Acc)",
-                          "currency":  "USD",
-                          "quantity":  313.6165,
-                          "pricePerShare":  690.39,
-                          "annualDividendPerShare":  6.3516,
-                          "monthlyContributionUsd":  0,
-                          "annualDividendProxyTicker":  "IUSA"
-                      },
-                      {
-                          "ticker":  "VWRA",
-                          "name":  "Vanguard FTSE All-World UCITS ETF (Acc)",
-                          "currency":  "USD",
-                          "quantity":  801.4647,
-                          "pricePerShare":  162.78,
-                          "annualDividendPerShare":  2.2378,
-                          "monthlyContributionUsd":  0,
-                          "annualDividendProxyTicker":  "VWRL"
-                      }
-                  ],
-    "history":  [
-                    {
-                        "date":  "2026-03-27T00:00:00",
-                        "assetValueTwd":  45000000,
-                        "note":  "將總資產調整為 4,500 萬台幣的積極版配置，並保留 1,500 萬定存作為安全墊。"
-                    }
-                ],
-    "actualHoldings":  [
-                           {
-                               "ticker":  "2330",
-                               "name":  "台積電",
-                               "currency":  "TWD",
-                               "quantity":  1488,
-                               "pricePerShare":  2055,
-                               "marketValueTwd":  3057840,
-                               "note":  "依你提供資訊手動登錄，現值約 NT$3,057,840。"
-                           },
-                           {
-                               "ticker":  "CSNDX",
-                               "name":  "iShares NASDAQ 100 UCITS ETF (Acc)",
-                               "currency":  "USD",
-                               "quantity":  12,
-                               "pricePerShare":  1446.2,
-                               "marketValueTwd":  555340.8,
-                               "note":  ""
-                           },
-                           {
-                               "ticker":  "CSPX",
-                               "name":  "iShares Core S\u0026P 500 UCITS ETF (Acc)",
-                               "currency":  "USD",
-                               "quantity":  25,
-                               "pricePerShare":  734.02,
-                               "marketValueTwd":  587216,
-                               "note":  ""
-                           },
-                           {
-                               "ticker":  "VWRA",
-                               "name":  "Vanguard FTSE All-World UCITS ETF (Acc)",
-                               "currency":  "USD",
-                               "quantity":  62,
-                               "pricePerShare":  174.26,
-                               "marketValueTwd":  345730.24,
-                               "note":  ""
-                           }
-                       ]
+    "asOfDate": "2026-03-27T00:00:00",
+    "goal": {
+        "targetDate": "2030-12-31T00:00:00",
+        "targetMonthlyIncomeTwd": 150000
+    },
+    "annualPlan": {
+        "year": 2026,
+        "targetInvestmentTwd": 30000000,
+        "deadline": "2026-12-31T00:00:00"
+    },
+    "fixedDeposit": {
+        "principalTwd": 15000000,
+        "annualInterestRate": 0.017,
+        "reinvestInterest": true
+    },
+    "liveData": {
+        "isLive": false,
+        "source": "手動配置資料",
+        "lastUpdatedUtc": null,
+        "refreshIntervalMinutes": 120,
+        "notes": "Cloudflare Worker 連接完成後，首頁會自動切換成每 2 小時更新的即時資料。"
+    },
+    "assumptions": {
+        "assumedAnnualYieldRate": 0.04,
+        "expectedAnnualReturnRate": 0.1,
+        "usdToTwdRate": 32,
+        "monthlyContributionUsd": 0,
+        "reinvestDividends": true
+    },
+    "currentCashTwd": 0,
+    "notes": "積極版配置：定存 1,500 萬固定不動，其餘 3,000 萬分配為 TSM 900 萬、CSNDX 900 萬、CSPX 750 萬、VWRA 450 萬。2028 年起再視市場與退休節奏，逐步轉向現金流資產。CSNDX、CSPX、VWRA 的年現金股利目前採模擬值，分別參考 EXXT、IUSA、VWRL 的配息水準回推。",
+    "positions": [
+        {
+            "ticker": "TSM",
+            "name": "台積電 ADR",
+            "currency": "USD",
+            "quantity": 802.8145,
+            "pricePerShare": 328.16,
+            "annualDividendPerShare": 3.52,
+            "monthlyContributionUsd": 0
+        },
+        {
+            "ticker": "CSNDX",
+            "name": "iShares NASDAQ 100 UCITS ETF (Acc)",
+            "currency": "USD",
+            "quantity": 200.6063,
+            "pricePerShare": 1341.8,
+            "annualDividendPerShare": 2.5494,
+            "monthlyContributionUsd": 0,
+            "annualDividendProxyTicker": "EXXT"
+        },
+        {
+            "ticker": "CSPX",
+            "name": "iShares Core S&P 500 UCITS ETF (Acc)",
+            "currency": "USD",
+            "quantity": 313.6165,
+            "pricePerShare": 690.39,
+            "annualDividendPerShare": 6.3516,
+            "monthlyContributionUsd": 0,
+            "annualDividendProxyTicker": "IUSA"
+        },
+        {
+            "ticker": "VWRA",
+            "name": "Vanguard FTSE All-World UCITS ETF (Acc)",
+            "currency": "USD",
+            "quantity": 801.4647,
+            "pricePerShare": 162.78,
+            "annualDividendPerShare": 2.2378,
+            "monthlyContributionUsd": 0,
+            "annualDividendProxyTicker": "VWRL"
+        }
+    ],
+    "history": [
+        {
+            "date": "2026-03-27T00:00:00",
+            "assetValueTwd": 45000000,
+            "note": "將總資產調整為 4,500 萬台幣的積極版配置，並保留 1,500 萬定存作為安全墊。"
+        }
+    ],
+    "actualHoldings": [
+        {
+            "ticker": "2330",
+            "name": "台積電",
+            "currency": "TWD",
+            "quantity": 1508,
+            "pricePerShare": 2080,
+            "marketValueTwd": 3136640,
+            "note": "依你提供資訊手動登錄，現值約 NT$3,136,640。"
+        },
+        {
+            "ticker": "CSNDX",
+            "name": "iShares NASDAQ 100 UCITS ETF (Acc)",
+            "currency": "USD",
+            "quantity": 12,
+            "pricePerShare": 1446.2,
+            "marketValueTwd": 555340.8,
+            "note": ""
+        },
+        {
+            "ticker": "CSPX",
+            "name": "iShares Core S&P 500 UCITS ETF (Acc)",
+            "currency": "USD",
+            "quantity": 25,
+            "pricePerShare": 734.02,
+            "marketValueTwd": 587216,
+            "note": ""
+        },
+        {
+            "ticker": "VWRA",
+            "name": "Vanguard FTSE All-World UCITS ETF (Acc)",
+            "currency": "USD",
+            "quantity": 62,
+            "pricePerShare": 174.26,
+            "marketValueTwd": 345730.24,
+            "note": ""
+        }
+    ]
 }
