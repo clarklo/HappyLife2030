@@ -1,0 +1,413 @@
+@page "/resort-hotels"
+
+<PageTitle>渡假飯店</PageTitle>
+
+<section class="flight-hero resort-hero">
+    <div>
+        <p class="eyebrow">渡假飯店</p>
+        <h1>親子泳池與溫泉飯店清單</h1>
+        <p class="hero-summary">
+            先把「小孩玩水爽度」排在飯店豪華度前面，再用高卡待遇、航程與度假完整度做排序。
+        </p>
+    </div>
+    <div class="flight-summary-card">
+        <span class="metric-label">目前收錄</span>
+        <strong>@FilteredHotels.Count</strong>
+        <p>篩選後飯店 / 共 @Hotels.Count 筆資料</p>
+    </div>
+</section>
+
+<section class="panel flight-filter-panel">
+    <div class="panel-heading">
+        <div>
+            <p class="eyebrow">線上篩選</p>
+            <h2>依大類、集團、地區與高卡價值查詢</h2>
+        </div>
+        <button class="filter-reset" type="button" @onclick="ResetFilters">清除篩選</button>
+    </div>
+
+    <div class="flight-filters resort-filters">
+        <label>
+            <span>關鍵字</span>
+            <input @bind="SearchText" @bind:event="oninput" placeholder="輸入飯店、城市、設施或備註" />
+        </label>
+        <label>
+            <span>大類</span>
+            <select @bind="SelectedCategory">
+                <option value="">全部大類</option>
+                @foreach (var category in Categories)
+                {
+                    <option value="@category">@category</option>
+                }
+            </select>
+        </label>
+        <label>
+            <span>集團</span>
+            <select @bind="SelectedGroup">
+                <option value="">全部集團</option>
+                @foreach (var group in Groups)
+                {
+                    <option value="@group">@group</option>
+                }
+            </select>
+        </label>
+        <label>
+            <span>國家地區</span>
+            <select @bind="SelectedCountry">
+                <option value="">全部地區</option>
+                @foreach (var country in Countries)
+                {
+                    <option value="@country">@country</option>
+                }
+            </select>
+        </label>
+        <label>
+            <span>高卡價值</span>
+            <select @bind="SelectedEliteValue">
+                <option value="">全部</option>
+                @foreach (var value in EliteValues)
+                {
+                    <option value="@value">@value</option>
+                }
+            </select>
+        </label>
+    </div>
+</section>
+
+<section class="metrics-grid flight-stat-grid">
+    @foreach (var stat in CategoryStats)
+    {
+        <article class="metric-card">
+            <span class="metric-label">@stat.Name</span>
+            <strong>@stat.Count</strong>
+            <p>@stat.Groups 個集團、@stat.Countries 個國家地區</p>
+        </article>
+    }
+</section>
+
+<section class="panel">
+    <div class="panel-heading">
+        <div>
+            <p class="eyebrow">推薦清單</p>
+            <h2>親子渡假飯店排序</h2>
+        </div>
+        <span class="muted">排序先看親子玩水/泡湯強度，再看高卡與航程</span>
+    </div>
+
+    <div class="resort-card-grid">
+        @foreach (var hotel in FilteredHotels)
+        {
+            <article class="resort-card">
+                <div class="resort-card-top">
+                    <span class="category-pill @GetCategoryClass(hotel.Category)">@hotel.Category</span>
+                    <span class="score-pill">@hotel.PriorityText</span>
+                </div>
+                <h3>@hotel.Name</h3>
+                <p class="panel-note">@hotel.Location · @hotel.Group</p>
+                <div class="resort-facts">
+                    <span>@hotel.EliteValue</span>
+                    <span>@hotel.TripStyle</span>
+                    <span>@hotel.BestFor</span>
+                </div>
+                <p>@hotel.Why</p>
+                <p class="panel-note">@hotel.Positioning</p>
+                <p class="panel-note">訂房前確認：@hotel.CheckBeforeBooking</p>
+            </article>
+        }
+    </div>
+</section>
+
+<section class="analysis-grid">
+    <article class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">我的排序</p>
+                <h2>先看小孩玩水爽度</h2>
+            </div>
+        </div>
+        <ul class="signal-list">
+            <li>只看小孩玩水爽度：Holiday Inn Vana Nava Hua Hin、ANA InterContinental Manza、Hilton Bali、Sheraton Grand Danang。</li>
+            <li>兼顧高卡待遇與飯店質感：Sheraton Grand Danang、Sofitel Krabi、Sheraton Okinawa Sunmarina、Pullman Phu Quoc。</li>
+            <li>短程三天兩夜：沖繩兩間、Hong Kong Ocean Park Marriott；香港可以搭配 Ocean Park 與 Water World。</li>
+            <li>溫泉飯店則偏大人放鬆、小孩輕度玩水；若主要目標是滑水道，優先選泳池飯店。</li>
+        </ul>
+    </article>
+
+    <article class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">訂房提醒</p>
+                <h2>三件事要先確認</h2>
+            </div>
+        </div>
+        <ol class="step-list">
+            <li>滑水道、水上樂園、海上充氣樂園是否季節開放，颱風季或冬季尤其要確認。</li>
+            <li>兒童年齡、身高、救生衣與家長陪同限制；有些滑水道會限制 120cm 以上。</li>
+            <li>高卡早餐、酒廊、升等與 resort fee 是否適用該房價，度假村常有例外。</li>
+        </ol>
+    </article>
+</section>
+
+@code {
+    private string SearchText { get; set; } = "";
+    private string SelectedCategory { get; set; } = "";
+    private string SelectedGroup { get; set; } = "";
+    private string SelectedCountry { get; set; } = "";
+    private string SelectedEliteValue { get; set; } = "";
+
+    private IReadOnlyList<string> Categories => Hotels.Select(hotel => hotel.Category).Distinct().OrderBy(item => item).ToList();
+    private IReadOnlyList<string> Groups => Hotels.Select(hotel => hotel.Group).Distinct().OrderBy(item => item).ToList();
+    private IReadOnlyList<string> Countries => Hotels.Select(hotel => hotel.Country).Distinct().OrderBy(item => item).ToList();
+    private IReadOnlyList<string> EliteValues => Hotels.Select(hotel => hotel.EliteValue).Distinct().OrderBy(item => item).ToList();
+
+    private IReadOnlyList<ResortHotel> FilteredHotels => Hotels
+        .Where(hotel => string.IsNullOrWhiteSpace(SelectedCategory) || hotel.Category == SelectedCategory)
+        .Where(hotel => string.IsNullOrWhiteSpace(SelectedGroup) || hotel.Group == SelectedGroup)
+        .Where(hotel => string.IsNullOrWhiteSpace(SelectedCountry) || hotel.Country == SelectedCountry)
+        .Where(hotel => string.IsNullOrWhiteSpace(SelectedEliteValue) || hotel.EliteValue == SelectedEliteValue)
+        .Where(MatchesSearch)
+        .OrderBy(hotel => hotel.Priority)
+        .ThenBy(hotel => hotel.Country)
+        .ThenBy(hotel => hotel.Name)
+        .ToList();
+
+    private IReadOnlyList<CategoryStat> CategoryStats => FilteredHotels
+        .GroupBy(hotel => hotel.Category)
+        .Select(group => new CategoryStat(
+            group.Key,
+            group.Count(),
+            group.Select(hotel => hotel.Group).Distinct().Count(),
+            group.Select(hotel => hotel.Country).Distinct().Count()))
+        .OrderBy(stat => stat.Name)
+        .ToList();
+
+    private bool MatchesSearch(ResortHotel hotel)
+    {
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            return true;
+        }
+
+        var keyword = SearchText.Trim();
+        return hotel.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+            || hotel.Location.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+            || hotel.Country.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+            || hotel.Group.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+            || hotel.Category.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+            || hotel.TripStyle.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+            || hotel.BestFor.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+            || hotel.Why.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+            || hotel.Positioning.Contains(keyword, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void ResetFilters()
+    {
+        SearchText = "";
+        SelectedCategory = "";
+        SelectedGroup = "";
+        SelectedCountry = "";
+        SelectedEliteValue = "";
+    }
+
+    private static string GetCategoryClass(string category)
+    {
+        return category switch
+        {
+            "泳池飯店" => "pool",
+            "溫泉飯店" => "onsen",
+            _ => "mixed"
+        };
+    }
+
+    private static readonly IReadOnlyList<ResortHotel> Hotels = new List<ResortHotel>
+    {
+        new(
+            "Holiday Inn Resort Vana Nava Hua Hin",
+            "泰國華欣",
+            "泰國",
+            "IHG",
+            "泳池飯店",
+            "高",
+            "親子玩水第一名",
+            "水上樂園型",
+            "住客可進 Vana Nava Water Jungle，主打 20 多項設施、刺激滑水道與親子池，飯店本身也有高樓無邊際泳池。",
+            "偏水上樂園，不是純度假村泳池；若小孩目標是滑水道，優先看這間。",
+            "水上樂園開放日、身高限制、房價是否含入園",
+            1),
+        new(
+            "ANA InterContinental Manza Beach Resort",
+            "日本沖繩",
+            "日本",
+            "IHG",
+            "泳池飯店",
+            "高",
+            "短程海邊玩水",
+            "海上充氣樂園",
+            "重點是 Manza Ocean Park，含兒童區、滑道、橋、彈跳床與攀爬牆等海上設施。",
+            "台灣出發短程，海邊玩水很強；但海上樂園受季節與天氣影響。",
+            "Ocean Park 季節、天候停開規則、兒童年齡限制",
+            2),
+        new(
+            "Sheraton Okinawa Sunmarina Resort",
+            "日本沖繩",
+            "日本",
+            "Marriott",
+            "泳池飯店",
+            "高",
+            "Marriott 高卡短程",
+            "安全玩水型",
+            "海灘飯店，有室內池、戶外 Garden Pool、30cm 兒童池與季節性滑水道。",
+            "想用 Marriott 高卡、又要小孩安全玩水，這間很穩。",
+            "滑水道開放月份、120cm 身高限制、Resort Pass 規則",
+            3),
+        new(
+            "Sheraton Grand Danang Beach Resort & Spa",
+            "越南峴港",
+            "越南",
+            "Marriott",
+            "泳池飯店",
+            "高",
+            "飯店質感加玩水",
+            "完整度假村",
+            "有 250 公尺無邊際泳池、kids' pool、mini water park、water slide 與 Kids Club。",
+            "泳池大人小孩都好，飯店感也比較完整。",
+            "Mini water park 開放時間、兒童俱樂部收費、房型是否適合家庭",
+            4),
+        new(
+            "Hilton Bali Resort",
+            "印尼峇里島",
+            "印尼",
+            "Hilton",
+            "泳池飯店",
+            "高",
+            "Hilton 親子度假",
+            "泳池度假村",
+            "有多座相連泳池、滑水道與沙灘潟湖，最像 Hilton 系統裡的親子泳池度假村選擇。",
+            "親子玩水很強，缺點是從台灣飛行時間較長。",
+            "滑水道開放時間、泳池維修、Hilton 高卡早餐與升等",
+            5),
+        new(
+            "Sofitel Krabi Phokeethra Golf & Spa Resort",
+            "泰國喀比",
+            "泰國",
+            "Accor",
+            "泳池飯店",
+            "中",
+            "大泳池放空",
+            "超大泳池型",
+            "主打泰國最大 free-form swimming pool，約 7,000 平方公尺，適合小孩泡水、大人放空。",
+            "沒有水上樂園那麼刺激，但泳池很大、度假感強。",
+            "兒童活動、泳池維修、Accor 高卡早餐與延退",
+            6),
+        new(
+            "Novotel Phuket Vintage Park Resort",
+            "泰國普吉島",
+            "泰國",
+            "Accor",
+            "泳池飯店",
+            "中",
+            "預算泳池度假",
+            "市區大泳池",
+            "有約 2,000 平方公尺泳池、家庭房與 kids club，位置在 Patong。",
+            "預算比 Sofitel 低，泳池大，但周邊較熱鬧。",
+            "Patong 環境是否適合小孩、kids club 年齡限制、房型大小",
+            7),
+        new(
+            "Hong Kong Ocean Park Marriott Hotel",
+            "香港",
+            "香港",
+            "Marriott",
+            "泳池飯店",
+            "高",
+            "短假高密度親子行程",
+            "城市親子型",
+            "有 lagoon-style pool、兒童池與 Kids Corner，可接香港海洋公園與 Water World。",
+            "週末短假很適合，不是海島度假村，但小孩行程密度高。",
+            "泳池開放季節、Ocean Park 與 Water World 營業日、套票是否划算",
+            8),
+        new(
+            "Pullman Phu Quoc Beach Resort",
+            "越南富國島",
+            "越南",
+            "Accor",
+            "泳池飯店",
+            "中",
+            "海島放空",
+            "海島度假型",
+            "Family friendly，有大型 free-form pool、家庭套房與 villa，離機場約 10 分鐘。",
+            "偏海島度假，不是滑水道型；Accor 高卡可考慮。",
+            "直飛航班、機場接送、家庭房與 villa 價差",
+            9),
+        new(
+            "ANA InterContinental Beppu Resort & Spa",
+            "日本別府",
+            "日本",
+            "IHG",
+            "溫泉飯店",
+            "高",
+            "大人放鬆溫泉",
+            "高級溫泉度假",
+            "別府山坡上的奢華溫泉度假村，有 onsen、spa、pool 與度假設施。",
+            "偏大人放鬆與景觀，不是小孩滑水道型；適合把泡湯當主題。",
+            "大眾湯維修時段、兒童入浴規則、IHG 高卡早餐與升等",
+            10),
+        new(
+            "Hilton Odawara Resort & Spa",
+            "日本小田原 / 箱根周邊",
+            "日本",
+            "Hilton",
+            "溫泉飯店",
+            "高",
+            "東京近郊溫泉泳池",
+            "溫泉加泳池",
+            "東京近郊海景 resort，有 hot spring baths、室內外泳池、spa 與多種活動。",
+            "比純溫泉旅館更親子，適合東京行程接一晚放鬆。",
+            "泳池與溫泉開放時間、兒童收費、Hilton 高卡早餐與升等",
+            11),
+        new(
+            "Fuji Speedway Hotel",
+            "日本富士山 / 御殿場",
+            "日本",
+            "Hyatt",
+            "溫泉飯店",
+            "中",
+            "富士山景加溫泉",
+            "溫泉加室內池",
+            "Omika Wellness & Spa 提供 public hot spring baths、spa、indoor pool 與健身房。",
+            "適合親子搭配御殿場、富士山與賽車博物館；不是水上樂園型。",
+            "溫泉年齡規定、Hyatt 高卡早餐、是否需要租車",
+            12),
+        new(
+            "The Westin Rusutsu Resort",
+            "日本北海道留壽都",
+            "日本",
+            "Marriott",
+            "溫泉飯店",
+            "中",
+            "北海道親子度假",
+            "溫泉加樂園",
+            "有 onsen，並可搭配 Rusutsu Resort 的遊樂設施與冬季雪場。",
+            "適合夏天樂園或冬天滑雪，不是單純泡湯飯店。",
+            "樂園/雪場季節、溫泉開放時間、Marriott 高卡待遇",
+            13)
+    };
+
+    private sealed record ResortHotel(
+        string Name,
+        string Location,
+        string Country,
+        string Group,
+        string Category,
+        string EliteValue,
+        string BestFor,
+        string TripStyle,
+        string Why,
+        string Positioning,
+        string CheckBeforeBooking,
+        int Priority)
+    {
+        public string PriorityText => $"#{Priority}";
+    }
+
+    private sealed record CategoryStat(string Name, int Count, int Groups, int Countries);
+}
