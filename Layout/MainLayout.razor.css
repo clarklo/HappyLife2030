@@ -9,7 +9,7 @@
     display: flex;
     justify-content: flex-start;
     align-items: center;
-    gap: 16px;
+    gap: 22px;
 }
 
 .brand-kicker {
@@ -25,6 +25,31 @@
     color: #f4efe6;
 }
 
+.shell-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.shell-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0.35rem 0.8rem;
+    border: 1px solid rgba(154, 199, 184, 0.18);
+    border-radius: 999px;
+    color: #9eb5ae;
+    text-decoration: none;
+    background: rgba(10, 32, 39, 0.48);
+}
+
+.shell-links a.active,
+.shell-links a:hover {
+    color: #071117;
+    background: linear-gradient(90deg, #7be0b7, #d5ffde);
+}
+
 .shell-content {
     width: min(1160px, calc(100% - 32px));
     margin: 0 auto;
@@ -34,5 +59,7 @@
 @media (max-width: 720px) {
     .shell-header {
         padding-top: 18px;
+        align-items: flex-start;
+        flex-direction: column;
     }
 }

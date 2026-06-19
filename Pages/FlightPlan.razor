@@ -1,0 +1,306 @@
+@page "/flight-plan"
+
+<PageTitle>飛行計畫</PageTitle>
+
+<section class="flight-hero">
+    <div>
+        <p class="eyebrow">飛行計畫</p>
+        <h1>台灣出發亞洲直航航線</h1>
+        <p class="hero-summary">
+            先整理松山、桃園、台中與小港機場出發的亞洲直航航線，並標記航空公司與所屬航空聯盟。
+        </p>
+    </div>
+    <div class="flight-summary-card">
+        <span class="metric-label">目前收錄</span>
+        <strong>@FilteredRoutes.Count</strong>
+        <p>篩選後航線 / 共 @Routes.Count 筆資料</p>
+    </div>
+</section>
+
+<section class="panel flight-filter-panel">
+    <div class="panel-heading">
+        <div>
+            <p class="eyebrow">線上篩選</p>
+            <h2>依機場、地區、聯盟與航空公司查詢</h2>
+        </div>
+        <button class="filter-reset" type="button" @onclick="ResetFilters">清除篩選</button>
+    </div>
+
+    <div class="flight-filters">
+        <label>
+            <span>關鍵字</span>
+            <input @bind="SearchText" @bind:event="oninput" placeholder="輸入城市、國家、航司或航點" />
+        </label>
+        <label>
+            <span>出發機場</span>
+            <select @bind="SelectedAirport">
+                <option value="">全部機場</option>
+                @foreach (var airport in Airports)
+                {
+                    <option value="@airport">@airport</option>
+                }
+            </select>
+        </label>
+        <label>
+            <span>亞洲區域</span>
+            <select @bind="SelectedRegion">
+                <option value="">全部區域</option>
+                @foreach (var region in Regions)
+                {
+                    <option value="@region">@region</option>
+                }
+            </select>
+        </label>
+        <label>
+            <span>航空聯盟</span>
+            <select @bind="SelectedAlliance">
+                <option value="">全部聯盟</option>
+                @foreach (var alliance in Alliances)
+                {
+                    <option value="@alliance">@alliance</option>
+                }
+            </select>
+        </label>
+        <label>
+            <span>航空公司</span>
+            <select @bind="SelectedAirline">
+                <option value="">全部航空公司</option>
+                @foreach (var airline in Airlines)
+                {
+                    <option value="@airline">@airline</option>
+                }
+            </select>
+        </label>
+    </div>
+</section>
+
+<section class="metrics-grid flight-stat-grid">
+    @foreach (var stat in AirportStats)
+    {
+        <article class="metric-card">
+            <span class="metric-label">@stat.Airport</span>
+            <strong>@stat.Count</strong>
+            <p>@stat.Destinations 個目的地、@stat.Airlines 家航空公司</p>
+        </article>
+    }
+</section>
+
+<section class="panel">
+    <div class="panel-heading">
+        <div>
+            <p class="eyebrow">航線清單</p>
+            <h2>亞洲直航資料</h2>
+        </div>
+        <span class="muted">資料為代表性定期航線，後續可持續增補</span>
+    </div>
+
+    <div class="table-shell">
+        <table class="flight-table">
+            <thead>
+                <tr>
+                    <th>出發機場</th>
+                    <th>目的地</th>
+                    <th>地區</th>
+                    <th>航空公司</th>
+                    <th>航空聯盟</th>
+                    <th>備註</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var route in FilteredRoutes)
+                {
+                    <tr>
+                        <td>
+                            <strong>@route.DepartureAirport</strong>
+                            <div class="cell-note">@route.DepartureCode</div>
+                        </td>
+                        <td>
+                            <strong>@route.Destination</strong>
+                            <div class="cell-note">@route.DestinationAirport</div>
+                        </td>
+                        <td>@route.Region</td>
+                        <td>@route.Airline</td>
+                        <td>
+                            <span class="alliance-pill @GetAllianceClass(route.Alliance)">@route.Alliance</span>
+                        </td>
+                        <td>@route.Note</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="panel-heading">
+        <div>
+            <p class="eyebrow">資料口徑</p>
+            <h2>目前整理方式</h2>
+        </div>
+    </div>
+    <ul class="signal-list">
+        <li>只收錄亞洲段直航，不含國內線、北美、歐洲與大洋洲。</li>
+        <li>「台北機場」在本頁指台北松山機場；「小港機場」指高雄國際機場。</li>
+        <li>航空聯盟以航空公司正式會員為主；廉航或未入盟航空公司標示為「無」。</li>
+        <li>目前先整理常見定期航線，實際班表仍需以航空公司與機場公告為準。</li>
+    </ul>
+</section>
+
+@code {
+    private string SearchText { get; set; } = "";
+    private string SelectedAirport { get; set; } = "";
+    private string SelectedRegion { get; set; } = "";
+    private string SelectedAlliance { get; set; } = "";
+    private string SelectedAirline { get; set; } = "";
+
+    private IReadOnlyList<string> Airports => Routes.Select(route => route.DepartureAirport).Distinct().OrderBy(item => item).ToList();
+    private IReadOnlyList<string> Regions => Routes.Select(route => route.Region).Distinct().OrderBy(item => item).ToList();
+    private IReadOnlyList<string> Alliances => Routes.Select(route => route.Alliance).Distinct().OrderBy(item => item).ToList();
+    private IReadOnlyList<string> Airlines => Routes.Select(route => route.Airline).Distinct().OrderBy(item => item).ToList();
+
+    private IReadOnlyList<FlightRoute> FilteredRoutes => Routes
+        .Where(route => string.IsNullOrWhiteSpace(SelectedAirport) || route.DepartureAirport == SelectedAirport)
+        .Where(route => string.IsNullOrWhiteSpace(SelectedRegion) || route.Region == SelectedRegion)
+        .Where(route => string.IsNullOrWhiteSpace(SelectedAlliance) || route.Alliance == SelectedAlliance)
+        .Where(route => string.IsNullOrWhiteSpace(SelectedAirline) || route.Airline == SelectedAirline)
+        .Where(MatchesSearch)
+        .OrderBy(route => route.DepartureAirport)
+        .ThenBy(route => route.Region)
+        .ThenBy(route => route.Destination)
+        .ThenBy(route => route.Airline)
+        .ToList();
+
+    private IReadOnlyList<AirportStat> AirportStats => FilteredRoutes
+        .GroupBy(route => route.DepartureAirport)
+        .Select(group => new AirportStat(
+            group.Key,
+            group.Count(),
+            group.Select(route => route.Destination).Distinct().Count(),
+            group.Select(route => route.Airline).Distinct().Count()))
+        .OrderBy(stat => stat.Airport)
+        .ToList();
+
+    private bool MatchesSearch(FlightRoute route)
+    {
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            return true;
+        }
+
+        var keyword = SearchText.Trim();
+        return route.DepartureAirport.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+            || route.DepartureCode.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+            || route.Destination.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+            || route.DestinationAirport.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+            || route.Region.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+            || route.Airline.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+            || route.Alliance.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+            || route.Note.Contains(keyword, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void ResetFilters()
+    {
+        SearchText = "";
+        SelectedAirport = "";
+        SelectedRegion = "";
+        SelectedAlliance = "";
+        SelectedAirline = "";
+    }
+
+    private static string GetAllianceClass(string alliance)
+    {
+        return alliance switch
+        {
+            "星空聯盟" => "star",
+            "天合聯盟" => "skyteam",
+            "寰宇一家" => "oneworld",
+            "星空聯盟 Connecting Partner" => "star",
+            _ => "none"
+        };
+    }
+
+    private static readonly IReadOnlyList<FlightRoute> Routes = new List<FlightRoute>
+    {
+        new("台北機場", "TSA", "東京", "東京羽田 HND", "東北亞", "中華航空", "天合聯盟", "台北松山城市機場航線"),
+        new("台北機場", "TSA", "東京", "東京羽田 HND", "東北亞", "長榮航空", "星空聯盟", "台北松山城市機場航線"),
+        new("台北機場", "TSA", "東京", "東京羽田 HND", "東北亞", "全日空", "星空聯盟", "台北松山城市機場航線"),
+        new("台北機場", "TSA", "東京", "東京羽田 HND", "東北亞", "日本航空", "寰宇一家", "台北松山城市機場航線"),
+        new("台北機場", "TSA", "首爾", "首爾金浦 GMP", "東北亞", "中華航空", "天合聯盟", "台北松山城市機場航線"),
+        new("台北機場", "TSA", "首爾", "首爾金浦 GMP", "東北亞", "長榮航空", "星空聯盟", "台北松山城市機場航線"),
+        new("台北機場", "TSA", "首爾", "首爾金浦 GMP", "東北亞", "德威航空", "無", "台北松山城市機場航線"),
+        new("台北機場", "TSA", "上海", "上海虹橋 SHA", "中國大陸", "中華航空", "天合聯盟", "兩岸城市機場航線"),
+        new("台北機場", "TSA", "上海", "上海虹橋 SHA", "中國大陸", "長榮航空", "星空聯盟", "兩岸城市機場航線"),
+        new("台北機場", "TSA", "上海", "上海虹橋 SHA", "中國大陸", "中國東方航空", "天合聯盟", "兩岸城市機場航線"),
+
+        new("桃園機場", "TPE", "香港", "香港 HKG", "港澳", "國泰航空", "寰宇一家", "高頻航線"),
+        new("桃園機場", "TPE", "香港", "香港 HKG", "港澳", "中華航空", "天合聯盟", "高頻航線"),
+        new("桃園機場", "TPE", "香港", "香港 HKG", "港澳", "長榮航空", "星空聯盟", "高頻航線"),
+        new("桃園機場", "TPE", "香港", "香港 HKG", "港澳", "香港快運", "無", "低成本航空"),
+        new("桃園機場", "TPE", "澳門", "澳門 MFM", "港澳", "澳門航空", "無", "港澳航線"),
+        new("桃園機場", "TPE", "澳門", "澳門 MFM", "港澳", "星宇航空", "無", "港澳航線"),
+        new("桃園機場", "TPE", "東京", "東京成田 NRT", "東北亞", "中華航空", "天合聯盟", "日本主力航線"),
+        new("桃園機場", "TPE", "東京", "東京成田 NRT", "東北亞", "長榮航空", "星空聯盟", "日本主力航線"),
+        new("桃園機場", "TPE", "東京", "東京成田 NRT", "東北亞", "星宇航空", "無", "日本主力航線"),
+        new("桃園機場", "TPE", "大阪", "大阪關西 KIX", "東北亞", "中華航空", "天合聯盟", "日本主力航線"),
+        new("桃園機場", "TPE", "大阪", "大阪關西 KIX", "東北亞", "長榮航空", "星空聯盟", "日本主力航線"),
+        new("桃園機場", "TPE", "大阪", "大阪關西 KIX", "東北亞", "樂桃航空", "無", "低成本航空"),
+        new("桃園機場", "TPE", "名古屋", "名古屋中部 NGO", "東北亞", "國泰航空", "寰宇一家", "第五航權/區域航線"),
+        new("桃園機場", "TPE", "福岡", "福岡 FUK", "東北亞", "星宇航空", "無", "日本區域航線"),
+        new("桃園機場", "TPE", "沖繩", "那霸 OKA", "東北亞", "虎航台灣", "無", "低成本航空"),
+        new("桃園機場", "TPE", "札幌", "新千歲 CTS", "東北亞", "長榮航空", "星空聯盟", "北海道航線"),
+        new("桃園機場", "TPE", "首爾", "首爾仁川 ICN", "東北亞", "大韓航空", "天合聯盟", "韓國主力航線"),
+        new("桃園機場", "TPE", "首爾", "首爾仁川 ICN", "東北亞", "韓亞航空", "星空聯盟", "韓國主力航線"),
+        new("桃園機場", "TPE", "釜山", "釜山 PUS", "東北亞", "釜山航空", "無", "韓國區域航線"),
+        new("桃園機場", "TPE", "新加坡", "新加坡 SIN", "東南亞", "新加坡航空", "星空聯盟", "東南亞樞紐"),
+        new("桃園機場", "TPE", "新加坡", "新加坡 SIN", "東南亞", "酷航", "無", "低成本航空"),
+        new("桃園機場", "TPE", "曼谷", "曼谷素萬那普 BKK", "東南亞", "泰國航空", "星空聯盟", "泰國主力航線"),
+        new("桃園機場", "TPE", "曼谷", "曼谷廊曼 DMK", "東南亞", "泰國亞洲航空", "無", "低成本航空"),
+        new("桃園機場", "TPE", "吉隆坡", "吉隆坡 KUL", "東南亞", "馬來西亞航空", "寰宇一家", "馬來西亞航線"),
+        new("桃園機場", "TPE", "河內", "河內 HAN", "東南亞", "越南航空", "天合聯盟", "越南主力航線"),
+        new("桃園機場", "TPE", "胡志明市", "新山一 SGN", "東南亞", "越捷航空", "無", "越南主力航線"),
+        new("桃園機場", "TPE", "馬尼拉", "馬尼拉 MNL", "東南亞", "菲律賓航空", "無", "菲律賓航線"),
+        new("桃園機場", "TPE", "宿霧", "宿霧 CEB", "東南亞", "宿霧太平洋航空", "無", "低成本航空"),
+        new("桃園機場", "TPE", "雅加達", "雅加達 CGK", "東南亞", "中華航空", "天合聯盟", "印尼航線"),
+        new("桃園機場", "TPE", "峴港", "峴港 DAD", "東南亞", "星宇航空", "無", "越南旅遊航線"),
+        new("桃園機場", "TPE", "上海", "上海浦東 PVG", "中國大陸", "中國東方航空", "天合聯盟", "兩岸航線"),
+        new("桃園機場", "TPE", "北京", "北京首都 PEK", "中國大陸", "中國國際航空", "星空聯盟", "兩岸航線"),
+        new("桃園機場", "TPE", "廈門", "廈門 XMN", "中國大陸", "廈門航空", "天合聯盟", "兩岸航線"),
+
+        new("台中機場", "RMQ", "香港", "香港 HKG", "港澳", "香港快運", "無", "台中國際線"),
+        new("台中機場", "RMQ", "香港", "香港 HKG", "港澳", "香港航空", "無", "台中國際線"),
+        new("台中機場", "RMQ", "澳門", "澳門 MFM", "港澳", "長榮航空", "星空聯盟", "台中國際線"),
+        new("台中機場", "RMQ", "澳門", "澳門 MFM", "港澳", "星宇航空", "無", "台中國際線"),
+        new("台中機場", "RMQ", "胡志明市", "新山一 SGN", "東南亞", "華信航空", "無", "台中越南航線"),
+        new("台中機場", "RMQ", "胡志明市", "新山一 SGN", "東南亞", "越捷航空", "無", "台中越南航線"),
+        new("台中機場", "RMQ", "首爾", "首爾仁川 ICN", "東北亞", "大韓航空", "天合聯盟", "台中韓國航線"),
+        new("台中機場", "RMQ", "沖繩", "那霸 OKA", "東北亞", "虎航台灣", "無", "台中日本航線"),
+
+        new("小港機場", "KHH", "香港", "香港 HKG", "港澳", "國泰航空", "寰宇一家", "高雄高頻航線"),
+        new("小港機場", "KHH", "香港", "香港 HKG", "港澳", "中華航空", "天合聯盟", "高雄高頻航線"),
+        new("小港機場", "KHH", "香港", "香港 HKG", "港澳", "長榮航空", "星空聯盟", "高雄高頻航線"),
+        new("小港機場", "KHH", "東京", "東京成田 NRT", "東北亞", "中華航空", "天合聯盟", "高雄日本主力航線"),
+        new("小港機場", "KHH", "東京", "東京成田 NRT", "東北亞", "長榮航空", "星空聯盟", "高雄日本主力航線"),
+        new("小港機場", "KHH", "大阪", "大阪關西 KIX", "東北亞", "樂桃航空", "無", "低成本航空"),
+        new("小港機場", "KHH", "首爾", "首爾仁川 ICN", "東北亞", "韓亞航空", "星空聯盟", "高雄韓國航線"),
+        new("小港機場", "KHH", "首爾", "首爾仁川 ICN", "東北亞", "德威航空", "無", "高雄韓國航線"),
+        new("小港機場", "KHH", "澳門", "澳門 MFM", "港澳", "澳門航空", "無", "港澳航線"),
+        new("小港機場", "KHH", "沖繩", "那霸 OKA", "東北亞", "中華航空", "天合聯盟", "高雄沖繩航線"),
+        new("小港機場", "KHH", "福岡", "福岡 FUK", "東北亞", "虎航台灣", "無", "高雄日本區域航線"),
+        new("小港機場", "KHH", "胡志明市", "新山一 SGN", "東南亞", "越南航空", "天合聯盟", "越南主力航線"),
+        new("小港機場", "KHH", "河內", "河內 HAN", "東南亞", "越捷航空", "無", "越南主力航線"),
+        new("小港機場", "KHH", "曼谷", "曼谷廊曼 DMK", "東南亞", "泰國亞洲航空", "無", "泰國航線"),
+        new("小港機場", "KHH", "上海", "上海浦東 PVG", "中國大陸", "吉祥航空", "星空聯盟 Connecting Partner", "兩岸航線"),
+    };
+
+    private sealed record FlightRoute(
+        string DepartureAirport,
+        string DepartureCode,
+        string Destination,
+        string DestinationAirport,
+        string Region,
+        string Airline,
+        string Alliance,
+        string Note);
+
+    private sealed record AirportStat(string Airport, int Count, int Destinations, int Airlines);
+}

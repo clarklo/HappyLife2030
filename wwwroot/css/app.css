@@ -111,6 +111,42 @@ code {
     max-width: 62ch;
 }
 
+.flight-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+    gap: 22px;
+    align-items: stretch;
+    padding: 28px;
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    background:
+        linear-gradient(120deg, rgba(16, 44, 52, 0.94), rgba(7, 20, 25, 0.9)),
+        radial-gradient(circle at 80% 20%, rgba(242, 179, 93, 0.18), transparent 30%);
+    box-shadow: var(--shadow);
+}
+
+.flight-hero h1 {
+    font-size: clamp(2rem, 4vw, 3.4rem);
+    line-height: 1.06;
+    margin-bottom: 1rem;
+}
+
+.flight-summary-card {
+    display: grid;
+    align-content: center;
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: linear-gradient(135deg, rgba(123, 224, 183, 0.12), rgba(242, 179, 93, 0.16));
+}
+
+.flight-summary-card strong {
+    display: block;
+    margin: 0.4rem 0;
+    font-size: clamp(2.4rem, 5vw, 4.6rem);
+    line-height: 1;
+}
+
 .hero-focus {
     display: grid;
     gap: 16px;
@@ -219,6 +255,95 @@ code {
 
 .metric-card.alert {
     background: linear-gradient(135deg, rgba(255, 128, 114, 0.18), rgba(43, 10, 18, 0.85));
+}
+
+.flight-filter-panel {
+    margin-top: 18px;
+}
+
+.flight-filters {
+    display: grid;
+    grid-template-columns: 1.4fr repeat(4, minmax(150px, 1fr));
+    gap: 14px;
+}
+
+.flight-filters label {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.flight-filters span {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.flight-filters input,
+.flight-filters select {
+    width: 100%;
+    min-height: 44px;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 0.55rem 0.75rem;
+    background: rgba(5, 18, 23, 0.78);
+}
+
+.flight-filters input:focus,
+.flight-filters select:focus {
+    outline: 2px solid rgba(123, 224, 183, 0.44);
+    outline-offset: 2px;
+}
+
+.filter-reset {
+    min-height: 38px;
+    color: #071117;
+    border: 0;
+    border-radius: 999px;
+    padding: 0.45rem 0.9rem;
+    font-weight: 700;
+    background: linear-gradient(90deg, #7be0b7, #d5ffde);
+    cursor: pointer;
+}
+
+.flight-stat-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.flight-table td,
+.flight-table th {
+    white-space: normal;
+    vertical-align: top;
+}
+
+.alliance-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.alliance-pill.star {
+    color: #06141b;
+    background: #d5ffde;
+}
+
+.alliance-pill.skyteam {
+    color: #06141b;
+    background: #b8dcff;
+}
+
+.alliance-pill.oneworld {
+    color: #06141b;
+    background: #ffd89b;
+}
+
+.alliance-pill.none {
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.07);
 }
 
 .progress-track {
@@ -379,7 +504,9 @@ thead th {
 @media (max-width: 980px) {
     .hero-panel,
     .analysis-grid,
-    .dividend-summary-layout {
+    .dividend-summary-layout,
+    .flight-hero,
+    .flight-filters {
         grid-template-columns: 1fr;
     }
 }
